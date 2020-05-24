@@ -60,7 +60,7 @@ impl<'a> Tokenizer<'a> {
                     Token::Tag(self.extract_word())
                 }
             },
-            Token::Pointer(_) => { Token::Tag(self.extract_word() )},
+            Token::Pointer(_) => { Token::Tag(self.extract_word())},
             Token::Tag(_) => { Token::LineValue(self.extract_value()) },
             _ => panic!("Tokenization error!"),
         };

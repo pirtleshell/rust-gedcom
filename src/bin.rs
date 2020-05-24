@@ -1,6 +1,5 @@
 use std::path::PathBuf;
-mod tokenizer;
-use tokenizer::Tokenizer;
+use gedcom::parser::Parser;
 
 fn read_relative(path: &str) -> String {
     let path_buf: PathBuf = PathBuf::from(path);
@@ -10,16 +9,12 @@ fn read_relative(path: &str) -> String {
 }
 
 fn main() {
-    let current_dir = std::env::current_dir().unwrap();
+    // let current_dir = std::env::current_dir().unwrap();
     // println!("{}", current_dir.display());
     // println!();
 
     let contents = read_relative("./tests/fixtures/simple.ged");
     // println!("{}", contents);
-    let mut tokenizer = Tokenizer::new(contents.chars());
-
-    while !tokenizer.done() {
-        tokenizer.next_token();
-        println!("{:02}: {:?}", tokenizer.line, tokenizer.current_token);
-    }
+    let mut parser = Parser::new(contents.chars());
+    parser.parse_record();
 }

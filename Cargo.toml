@@ -6,3 +6,11 @@ edition = "2018"
 include = ["Cargo.toml", "src/**/*.rs"]
 
 [dependencies]
+
+[lib]
+name = "gedcom"
+path = "src/lib.rs"
+
+[[bin]]
+name = "parse_gedcom"
+path = "src/bin.rs"
