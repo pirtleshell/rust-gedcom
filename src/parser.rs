@@ -1,6 +1,7 @@
 use std::str::Chars;
 
 use crate::tokenizer::{Token, Tokenizer};
+use crate::tree::GedcomData;
 use crate::types::{
     Event,
     EventType,
@@ -20,7 +21,8 @@ impl<'a> Parser<'a> {
         Parser { tokenizer }
     }
 
-    pub fn parse_record(&mut self) {
+    pub fn parse_record(&mut self) -> GedcomData {
+        let mut data = GedcomData::new();
         loop {
             let level = match self.tokenizer.current_token {
                 Token::Level(n) => n,
@@ -40,8 +42,8 @@ impl<'a> Parser<'a> {
             match &self.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
                     "HEAD" => self.parse_header(),
-                    "SUBM" => self.parse_submitter(level, pointer),
-                    "INDI" => self.parse_individual(level, pointer),
+                    "SUBM" => data.add_submitter(self.parse_submitter(level, pointer)),
+                    "INDI" => data.add_individual(self.parse_individual(level, pointer)),
                     "TRLR" => break,
                     _ => {
                         println!("Unhandled tag {}", tag);
@@ -52,13 +54,15 @@ impl<'a> Parser<'a> {
                     println!("! Unhandled token {:?}", self.tokenizer.current_token);
                     self.tokenizer.next_token();
                 },
-            }
+            };
 
             if let Token::LineValue(val) = &self.tokenizer.current_token {
                 println!("  has value {}", val);
                 self.tokenizer.next_token();
             }
         }
+
+        return data;
     }
 
     fn parse_header(&mut self) {
@@ -69,7 +73,7 @@ impl<'a> Parser<'a> {
         println!("  handled header");
     }
 
-    fn parse_submitter(&mut self, level: u8, xref: Option<String>) {
+    fn parse_submitter(&mut self, level: u8, xref: Option<String>) -> Submitter {
         // skip over SUBM tag name
         self.tokenizer.next_token();
 
@@ -94,9 +98,10 @@ impl<'a> Parser<'a> {
             }
         }
         println!("found submitter:\n{:?}", submitter);
+        return submitter;
     }
 
-    fn parse_individual(&mut self, level: u8, xref: Option<String>) {
+    fn parse_individual(&mut self, level: u8, xref: Option<String>) -> Individual {
         // skip over INDI tag name
         self.tokenizer.next_token();
         let mut individual = Individual::empty(xref);
@@ -132,6 +137,7 @@ impl<'a> Parser<'a> {
             }
         }
         println!("found individual:\n{:#?}", individual);
+        return individual;
     }
 
     fn parse_gender(&mut self) -> Gender {

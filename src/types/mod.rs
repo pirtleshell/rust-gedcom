@@ -2,12 +2,14 @@
 
 mod event;
 pub use event::*;
-mod individual;
-pub use individual::*;
 
 type Xref = String;
 
 // top-level record types
+mod individual;
+pub use individual::*;
+
+#[derive(Debug)]
 pub struct Family {
     // this data representation understands that HUSB & WIFE are just poorly-named
     // pointers to individals. no gender "validating" is done on parse.
@@ -17,10 +19,13 @@ pub struct Family {
     pub num_children: Option<u8>,
 }
 
+#[derive(Debug)]
 pub struct Media {}
 
+#[derive(Debug)]
 pub struct Repository {}
 
+#[derive(Debug)]
 pub struct Source {}
 
 #[derive(Debug)]

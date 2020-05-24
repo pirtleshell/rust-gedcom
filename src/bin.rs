@@ -16,5 +16,8 @@ fn main() {
     let contents = read_relative("./tests/fixtures/simple.ged");
     // println!("{}", contents);
     let mut parser = Parser::new(contents.chars());
-    parser.parse_record();
+    let data = parser.parse_record();
+
+    println!("Parsing complete!\n\n");
+    println!("{:#?}", data);
 }
