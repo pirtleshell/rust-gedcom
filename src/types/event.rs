@@ -9,16 +9,16 @@ pub enum EventType {
 
 pub struct Event {
     pub event: EventType,
-    pub place: Option<String>,
     pub date: Option<String>,
+    pub place: Option<String>,
 }
 
 impl Event {
     pub fn new(etype: EventType) -> Event {
         Event {
             event: etype,
-            place: None,
             date: None,
+            place: None,
         }
     }
 }
@@ -28,13 +28,8 @@ impl std::fmt::Debug for Event {
         let event_type = format!("{:?} Event", &self.event);
         let mut debug = f.debug_struct(&event_type);
 
-        if let Some(date) = &self.date {
-            debug.field("date", date);
-        }
-
-        if let Some(place) = &self.place {
-            debug.field("place", place);
-        }
+        fmt_optional_value!(debug, "date", &self.date);
+        fmt_optional_value!(debug, "place", &self.place);
 
          debug.finish()
     }
