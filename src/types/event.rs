@@ -1,6 +1,7 @@
 use std::fmt;
 
 #[derive(Debug)]
+#[derive(PartialEq)]
 pub enum EventType {
     Birth,
     Death,

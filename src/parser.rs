@@ -1,10 +1,14 @@
-use std::str::Chars;
+use std::{
+    panic,
+    str::Chars,
+};
 
 use crate::tokenizer::{Token, Tokenizer};
 use crate::tree::GedcomData;
 use crate::types::{
     Event,
     EventType,
+    Family,
     Gender,
     Individual,
     Submitter,
@@ -29,12 +33,10 @@ impl<'a> Parser<'a> {
                 _ => panic!("Expected Level, found {:?}", self.tokenizer.current_token),
             };
 
-            println!("Level {} record", level);
             self.tokenizer.next_token();
 
             let mut pointer: Option<String> = None;
             if let Token::Pointer(xref) = &self.tokenizer.current_token {
-                println!("  found pointer: {}", xref);
                 pointer = Some(xref.to_string());
                 self.tokenizer.next_token();
             }
@@ -44,9 +46,10 @@ impl<'a> Parser<'a> {
                     "HEAD" => self.parse_header(),
                     "SUBM" => data.add_submitter(self.parse_submitter(level, pointer)),
                     "INDI" => data.add_individual(self.parse_individual(level, pointer)),
+                    "FAM"  => data.add_family(self.parse_family(level, pointer)),
                     "TRLR" => break,
                     _ => {
-                        println!("Unhandled tag {}", tag);
+                        println!("line {}: Unhandled tag {}", self.tokenizer.line, tag);
                         self.tokenizer.next_token();
                     },
                 },
@@ -56,8 +59,7 @@ impl<'a> Parser<'a> {
                 },
             };
 
-            if let Token::LineValue(val) = &self.tokenizer.current_token {
-                println!("  has value {}", val);
+            if let Token::LineValue(_) = &self.tokenizer.current_token {
                 self.tokenizer.next_token();
             }
         }
@@ -129,7 +131,7 @@ impl<'a> Parser<'a> {
                             },
                             None => panic!("No family xref found."),
                         };
-                    }
+                    },
                     _ => panic!("Unhandled Individual Tag: {}", tag),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
@@ -138,6 +140,46 @@ impl<'a> Parser<'a> {
         }
         println!("found individual:\n{:#?}", individual);
         return individual;
+    }
+
+    fn parse_family(&mut self, level: u8, xref: Option<String>) -> Family {
+        // skip over FAM tag name
+        self.tokenizer.next_token();
+        let mut family = Family::new(xref);
+
+        while self.tokenizer.current_token != Token::Level(level) {
+            match &self.tokenizer.current_token {
+                Token::Tag(tag) => match tag.as_str() {
+                    "MARR" => family.add_event(
+                      self.parse_event(EventType::Marriage, level + 1)
+                    ),
+                    "HUSB" => {
+                        match self.parse_string_value(level + 1) {
+                            Some(xref) => family.set_individual1(xref),
+                            None => panic!("No HUSB individual link found."),
+                        };
+                    },
+                    "WIFE" => {
+                        match self.parse_string_value(level + 1) {
+                            Some(xref) => family.set_individual2(xref),
+                            None => panic!("No WIFE individual link found."),
+                        };
+                    },
+                    "CHIL" => {
+                        match self.parse_string_value(level + 1) {
+                            Some(xref) => family.add_child(xref),
+                            None => panic!("No CHIL individual link found."),
+                        };
+                    },
+                    _ => panic!("Unhandled Family Tag: {}", tag),
+                },
+                Token::Level(_) => self.tokenizer.next_token(),
+                _ => panic!{"Unhandled Family Token: {:?}", self.tokenizer.current_token},
+            }
+        }
+
+        println!("found family:\n{:#?}", family);
+        return family;
     }
 
     fn parse_gender(&mut self) -> Gender {
@@ -185,8 +227,6 @@ impl<'a> Parser<'a> {
             return None;
         }
 
-        println!("found value {}", ret);
-
         self.tokenizer.next_token();
         match self.check_and_parse_cont(level) {
             Some(val) => ret.push_str(&val),
@@ -231,5 +271,4 @@ impl<'a> Parser<'a> {
             return None;
         }
     }
-
 }

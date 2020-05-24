@@ -9,15 +9,8 @@ type Xref = String;
 mod individual;
 pub use individual::*;
 
-#[derive(Debug)]
-pub struct Family {
-    // this data representation understands that HUSB & WIFE are just poorly-named
-    // pointers to individals. no gender "validating" is done on parse.
-    pub person1: Option<Xref>, // mapped from HUSB
-    pub person2: Option<Xref>, // mapped from WIFE
-    pub children: Vec<Xref>,
-    pub num_children: Option<u8>,
-}
+mod family;
+pub use family::*;
 
 #[derive(Debug)]
 pub struct Media {}
