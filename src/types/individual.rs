@@ -11,6 +11,7 @@ pub struct Individual {
     pub death: Option<Event>,
     pub families: Vec<FamilyLink>,
 }
+
 impl Individual {
     pub fn empty(xref: Option<Xref>) -> Individual {
         Individual {
