@@ -22,7 +22,7 @@ pub struct Tokenizer<'a> {
 }
 
 impl<'a> Tokenizer<'a> {
-    pub fn new(mut chars: Chars<'a>) -> Tokenizer {
+    pub fn new(chars: Chars<'a>) -> Tokenizer {
         Tokenizer {
             current_char: '\n',
             current_token: Token::None,

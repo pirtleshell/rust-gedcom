@@ -2,6 +2,10 @@ use std::str::Chars;
 
 use crate::tokenizer::{Token, Tokenizer};
 use crate::types::{
+    Event,
+    EventType,
+    Gender,
+    Individual,
     Submitter,
 };
 
@@ -37,6 +41,7 @@ impl<'a> Parser<'a> {
                 Token::Tag(tag) => match tag.as_str() {
                     "HEAD" => self.parse_header(),
                     "SUBM" => self.parse_submitter(level, pointer),
+                    "INDI" => self.parse_individual(level, pointer),
                     "TRLR" => break,
                     _ => {
                         println!("Unhandled tag {}", tag);
@@ -64,7 +69,7 @@ impl<'a> Parser<'a> {
         println!("  handled header");
     }
 
-    fn parse_submitter(&mut self, min_level: u8, xref: Option<String>) {
+    fn parse_submitter(&mut self, level: u8, xref: Option<String>) {
         // skip over SUBM tag name
         self.tokenizer.next_token();
 
@@ -73,18 +78,95 @@ impl<'a> Parser<'a> {
             address: None,
             xref,
         };
-        while self.tokenizer.current_token != Token::Level(min_level) {
+        while self.tokenizer.current_token != Token::Level(level) {
             match &self.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
-                    "NAME" => { submitter.name = self.parse_string_value(min_level + 1); },
-                    "ADDR" => { submitter.address = self.parse_string_value(min_level + 1); }
-                    _ => {println!("Unhandled Submitter Tag: {}", tag); self.tokenizer.next_token(); },
+                    "NAME" => {
+                        submitter.name = self.parse_string_value(level + 1);
+                    },
+                    "ADDR" => {
+                        submitter.address = self.parse_string_value(level + 1);
+                    },
+                    _ => panic!("Unhandled Submitter Tag: {}", tag),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
                 _ => panic!{"Unhandled Submitter Token: {:?}", self.tokenizer.current_token},
             }
         }
         println!("found submitter:\n{:?}", submitter);
+    }
+
+    fn parse_individual(&mut self, level: u8, xref: Option<String>) {
+        // skip over INDI tag name
+        self.tokenizer.next_token();
+        let mut individual = Individual::empty(xref);
+
+        while self.tokenizer.current_token != Token::Level(level) {
+            match &self.tokenizer.current_token {
+                Token::Tag(tag) => match tag.as_str() {
+                    "NAME" => {
+                        individual.name = self.parse_string_value(level + 1);
+                    },
+                    "SEX" => {
+                        individual.sex = self.parse_gender();
+                    },
+                    "BIRT" => {
+                        individual.birth = Some(self.parse_event(EventType::Birth, level + 1));
+                    },
+                    "DEAT" => {
+                        individual.death = Some(self.parse_event(EventType::Death, level + 1));
+                    },
+                    "FAMC" | "FAMS" => {
+                        let tag_copy = tag.clone();
+                        match self.parse_string_value(level + 1) {
+                            Some(family_xref) => {
+                                individual.add_family(family_xref.to_string(), tag_copy.as_str());
+                            },
+                            None => panic!("No family xref found."),
+                        };
+                    }
+                    _ => panic!("Unhandled Individual Tag: {}", tag),
+                },
+                Token::Level(_) => self.tokenizer.next_token(),
+                _ => panic!{"Unhandled Individual Token: {:?}", self.tokenizer.current_token},
+            }
+        }
+        println!("found individual:\n{:#?}", individual);
+    }
+
+    fn parse_gender(&mut self) -> Gender {
+        self.tokenizer.next_token();
+        let gender: Gender;
+        if let Token::LineValue(gender_string) = &self.tokenizer.current_token {
+            gender = match gender_string.as_str() {
+                "M" => Gender::Male,
+                "F" => Gender::Female,
+                "N" => Gender::Nonbinary,
+                "U" => Gender::Unknown,
+                _ => panic!("Unknown gender value {}", gender_string),
+            };
+        } else {
+            panic!("Expected gender LineValue, found {:?}", self.tokenizer.current_token);
+        }
+        self.tokenizer.next_token();
+        return gender;
+    }
+
+    fn parse_event(&mut self, etype: EventType, level: u8) -> Event {
+        self.tokenizer.next_token();
+        let mut event = Event::new(etype);
+        while self.tokenizer.current_token != Token::Level(level) {
+            match &self.tokenizer.current_token {
+                Token::Tag(tag) => match tag.as_str() {
+                    "PLAC" => { event.place = self.parse_string_value(level + 1); },
+                    "DATE" => { event.date = self.parse_string_value(level + 1); },
+                    _ => panic!("Unhandled Event Tag: {}", tag),
+                },
+                Token::Level(_) => self.tokenizer.next_token(),
+                _ => panic!{"Unhandled Event Token: {:?}", self.tokenizer.current_token},
+            }
+        }
+        return event;
     }
 
     fn parse_string_value(&mut self, level: u8) -> Option<String> {
