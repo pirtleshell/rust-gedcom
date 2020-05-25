@@ -2,6 +2,8 @@
 
 mod event;
 pub use event::*;
+mod address;
+pub use address::*;
 
 type Xref = String;
 
@@ -25,5 +27,17 @@ pub struct Source {}
 pub struct Submitter {
     pub xref: Option<Xref>,
     pub name: Option<String>,
-    pub address: Option<String>,
+    pub address: Option<Address>,
+    pub phone: Option<String>,
+}
+
+impl Submitter {
+    pub fn new(xref: Option<Xref>) -> Submitter {
+        Submitter {
+            xref,
+            name: None,
+            address: None,
+            phone: None,
+        }
+    }
 }

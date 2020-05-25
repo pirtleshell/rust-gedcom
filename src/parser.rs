@@ -6,11 +6,13 @@ use std::{
 use crate::tokenizer::{Token, Tokenizer};
 use crate::tree::GedcomData;
 use crate::types::{
+    Address,
     Event,
     EventType,
     Family,
     Gender,
     Individual,
+    Name,
     Submitter,
 };
 
@@ -30,7 +32,7 @@ impl<'a> Parser<'a> {
         loop {
             let level = match self.tokenizer.current_token {
                 Token::Level(n) => n,
-                _ => panic!("Expected Level, found {:?}", self.tokenizer.current_token),
+                _ => panic!("{} Expected Level, found {:?}", self.dbg(), self.tokenizer.current_token),
             };
 
             self.tokenizer.next_token();
@@ -49,19 +51,15 @@ impl<'a> Parser<'a> {
                     "FAM"  => data.add_family(self.parse_family(level, pointer)),
                     "TRLR" => break,
                     _ => {
-                        println!("line {}: Unhandled tag {}", self.tokenizer.line, tag);
+                        println!("{} Unhandled tag {}", self.dbg(), tag);
                         self.tokenizer.next_token();
                     },
                 },
                 _ => {
-                    println!("! Unhandled token {:?}", self.tokenizer.current_token);
+                    println!("{} Unhandled token {:?}", self.dbg(), self.tokenizer.current_token);
                     self.tokenizer.next_token();
                 },
             };
-
-            if let Token::LineValue(_) = &self.tokenizer.current_token {
-                self.tokenizer.next_token();
-            }
         }
 
         return data;
@@ -79,27 +77,22 @@ impl<'a> Parser<'a> {
         // skip over SUBM tag name
         self.tokenizer.next_token();
 
-        let mut submitter = Submitter {
-            name: None,
-            address: None,
-            xref,
-        };
+        let mut submitter = Submitter::new(xref);
         while self.tokenizer.current_token != Token::Level(level) {
             match &self.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
-                    "NAME" => {
-                        submitter.name = self.parse_string_value(level + 1);
-                    },
+                    "NAME" => submitter.name = Some(self.take_line_value()),
                     "ADDR" => {
-                        submitter.address = self.parse_string_value(level + 1);
+                        submitter.address = Some(self.parse_address(level + 1));
                     },
-                    _ => panic!("Unhandled Submitter Tag: {}", tag),
+                    "PHON" => submitter.phone = Some(self.take_line_value()),
+                    _ => panic!("{} Unhandled Submitter Tag: {}", self.dbg(), tag),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
                 _ => panic!{"Unhandled Submitter Token: {:?}", self.tokenizer.current_token},
             }
         }
-        println!("found submitter:\n{:?}", submitter);
+        println!("found submitter:\n{:#?}", submitter);
         return submitter;
     }
 
@@ -112,7 +105,7 @@ impl<'a> Parser<'a> {
             match &self.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
                     "NAME" => {
-                        individual.name = self.parse_string_value(level + 1);
+                        individual.name = Some(self.parse_name(level + 1));
                     },
                     "SEX" => {
                         individual.sex = self.parse_gender();
@@ -132,7 +125,7 @@ impl<'a> Parser<'a> {
                             None => panic!("No family xref found."),
                         };
                     },
-                    _ => panic!("Unhandled Individual Tag: {}", tag),
+                    _ => panic!("{} Unhandled Individual Tag: {}", self.dbg(), tag),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
                 _ => panic!{"Unhandled Individual Token: {:?}", self.tokenizer.current_token},
@@ -171,7 +164,7 @@ impl<'a> Parser<'a> {
                             None => panic!("No CHIL individual link found."),
                         };
                     },
-                    _ => panic!("Unhandled Family Tag: {}", tag),
+                    _ => panic!("{} Unhandled Family Tag: {}", self.dbg(), tag),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
                 _ => panic!{"Unhandled Family Token: {:?}", self.tokenizer.current_token},
@@ -191,7 +184,7 @@ impl<'a> Parser<'a> {
                 "F" => Gender::Female,
                 "N" => Gender::Nonbinary,
                 "U" => Gender::Unknown,
-                _ => panic!("Unknown gender value {}", gender_string),
+                _ => panic!("{} Unknown gender value {}", self.dbg(), gender_string),
             };
         } else {
             panic!("Expected gender LineValue, found {:?}", self.tokenizer.current_token);
@@ -200,21 +193,83 @@ impl<'a> Parser<'a> {
         return gender;
     }
 
+    fn parse_name(&mut self, level: u8) -> Name {
+        let mut name = Name {
+            value: Some(self.take_line_value()),
+            given: None,
+            surname: None,
+        };
+
+        loop {
+            if let Token::Level(cur_level) = self.tokenizer.current_token {
+                if cur_level <= level { break; }
+            }
+            match &self.tokenizer.current_token {
+                Token::Tag(tag) => match tag.as_str() {
+                    "GIVN" => name.given = Some(self.take_line_value()),
+                    "SURN" => name.surname = Some(self.take_line_value()),
+                    _ => panic!("{} Unhandled Name Tag: {}", self.dbg(), tag),
+                },
+                Token::Level(_) => self.tokenizer.next_token(),
+                _ => panic!{"Unhandled Name Token: {:?}", self.tokenizer.current_token},
+            }
+        }
+
+        return name;
+    }
+
     fn parse_event(&mut self, etype: EventType, level: u8) -> Event {
         self.tokenizer.next_token();
         let mut event = Event::new(etype);
         while self.tokenizer.current_token != Token::Level(level) {
             match &self.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
-                    "PLAC" => { event.place = self.parse_string_value(level + 1); },
-                    "DATE" => { event.date = self.parse_string_value(level + 1); },
-                    _ => panic!("Unhandled Event Tag: {}", tag),
+                    "PLAC" => event.place = Some(self.take_line_value()),
+                    "DATE" => event.date = Some(self.take_line_value()),
+                    _ => panic!("{} Unhandled Event Tag: {}", self.dbg(), tag),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
                 _ => panic!{"Unhandled Event Token: {:?}", self.tokenizer.current_token},
             }
         }
         return event;
+    }
+
+    fn parse_address(&mut self, level: u8) -> Address {
+        // skip ADDR tag
+        self.tokenizer.next_token();
+        let mut address = Address::new();
+        let mut value = String::new();
+
+        // handle value on ADDR line
+        if let Token::LineValue(addr) = &self.tokenizer.current_token {
+            value.push_str(addr);
+            self.tokenizer.next_token();
+        }
+
+        loop {
+            if let Token::Level(cur_level) = self.tokenizer.current_token {
+                if cur_level <= level { break; }
+            }
+            match &self.tokenizer.current_token {
+                Token::Tag(tag) => match tag.as_str() {
+                    "CONT" => { value.push_str(&self.take_line_value()); },
+                    "CITY" => { address.city = Some(self.take_line_value()); },
+                    "STAE" => { address.state = Some(self.take_line_value()); },
+                    "POST" => { address.post = Some(self.take_line_value()); },
+                    "CTRY" => { address.country = Some(self.take_line_value()); },
+                    _ => panic!("{} Unhandled Address Tag: {}", self.dbg(), tag),
+                },
+                Token::Level(_) => self.tokenizer.next_token(),
+                _ => panic!{"Unhandled Address Token: {:?}", self.tokenizer.current_token},
+            }
+        }
+
+        if &value != "" {
+            address.value = Some(value);
+        }
+
+        return address;
     }
 
     fn parse_string_value(&mut self, level: u8) -> Option<String> {
@@ -247,21 +302,15 @@ impl<'a> Parser<'a> {
             match &self.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
                     "CONT" => {
-                        self.tokenizer.next_token();
-                        if let Token::LineValue(val) = &self.tokenizer.current_token {
-                            value.push_str(&val);
-                            self.tokenizer.next_token();
+                        value.push_str(&self.take_line_value());
 
-                            // recursively handle more CONT lines
-                            match self.check_and_parse_cont(level) {
-                                Some(another) => value.push_str(&another),
-                                None => (),
-                            }
-                        } else {
-                            panic!("Expected LineValue, found {:?}", self.tokenizer.current_token);
+                        // recursively handle more CONT lines
+                        match self.check_and_parse_cont(level) {
+                            Some(another) => value.push_str(&another),
+                            None => (),
                         }
                     },
-                    _ => panic!("Unexpected tag while parsing for CONT: {}", tag),
+                    _ => panic!("{} Unexpected tag while parsing for CONT: {}", self.dbg(), tag),
                 },
                 _ => panic!("Bad accounting in CONT check"),
             };
@@ -270,5 +319,26 @@ impl<'a> Parser<'a> {
         } else {
             return None;
         }
+    }
+
+    fn take_line_value(&mut self) -> String {
+        let mut _value = String::new();
+        self.tokenizer.next_token();
+
+        if let Token::LineValue(val) = &self.tokenizer.current_token {
+            _value = val.to_string();
+        } else {
+            panic!(
+                "{} Expected LineValue, found {:?}",
+                self.dbg(),
+                self.tokenizer.current_token
+            );
+        }
+        self.tokenizer.next_token();
+        return _value;
+    }
+
+    fn dbg(&self) -> String {
+        format!("line {}:", self.tokenizer.line)
     }
 }

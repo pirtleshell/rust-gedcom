@@ -1,5 +1,7 @@
 use std::fmt;
 
+type Xref = String;
+
 #[derive(Debug)]
 #[derive(PartialEq)]
 pub enum EventType {
@@ -12,6 +14,7 @@ pub struct Event {
     pub event: EventType,
     pub date: Option<String>,
     pub place: Option<String>,
+    pub source: Option<Xref>,
 }
 
 impl Event {
@@ -20,6 +23,7 @@ impl Event {
             event: etype,
             date: None,
             place: None,
+            source: None,
         }
     }
 }

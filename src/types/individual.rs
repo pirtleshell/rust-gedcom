@@ -5,7 +5,7 @@ type Xref = String;
 #[derive(Debug)]
 pub struct Individual {
     pub xref: Option<Xref>,
-    pub name: Option<String>,
+    pub name: Option<Name>,
     pub sex: Gender,
     pub birth: Option<Event>,
     pub death: Option<Event>,
@@ -57,3 +57,10 @@ enum FamilyLinkType {
 
 #[derive(Debug)]
 pub struct FamilyLink(Xref, FamilyLinkType);
+
+#[derive(Debug)]
+pub struct Name {
+    pub value: Option<String>,
+    pub given: Option<String>,
+    pub surname: Option<String>,
+}

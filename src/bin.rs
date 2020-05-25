@@ -13,11 +13,18 @@ fn main() {
     // println!("{}", current_dir.display());
     // println!();
 
-    let contents = read_relative("./tests/fixtures/simple.ged");
-    // println!("{}", contents);
+    // let contents = read_relative("./tests/fixtures/simple.ged");
+    // // println!("{}", contents);
+    // let mut parser = Parser::new(contents.chars());
+    // let data = parser.parse_record();
+
+    // println!("Parsing complete!");
+    // println!("\n\n{:#?}", data);
+
+    let contents = read_relative("./tests/fixtures/sample.ged");
     let mut parser = Parser::new(contents.chars());
     let data = parser.parse_record();
 
     println!("Parsing complete!");
-    // println!("\n\n{:#?}", data);
+    println!("\n\n{:#?}", data);
 }
