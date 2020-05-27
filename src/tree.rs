@@ -31,12 +31,16 @@ impl GedcomData {
         }
     }
 
-    pub fn add_individual(&mut self, individual: Individual) {
-        self.individuals.push(individual);
-    }
-
     pub fn add_family(&mut self, family: Family) {
         self.families.push(family);
+    }
+
+    pub fn add_source(&mut self, source: Source) {
+        self.sources.push(source);
+    }
+
+    pub fn add_individual(&mut self, individual: Individual) {
+        self.individuals.push(individual);
     }
 
     pub fn add_submitter(&mut self, submitter: Submitter) {

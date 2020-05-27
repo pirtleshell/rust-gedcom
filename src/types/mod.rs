@@ -23,6 +23,12 @@ pub struct Repository {}
 #[derive(Debug)]
 pub struct Source {}
 
+#[derive(Clone, Debug)]
+pub struct SourceCitation {
+    pub xref: Xref,
+    pub page: Option<String>,
+}
+
 #[derive(Debug)]
 pub struct Submitter {
     pub xref: Option<Xref>,

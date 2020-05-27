@@ -1,7 +1,8 @@
-use std::fmt;
-use std::string::ToString;
-
-type Xref = String;
+use std::{
+    fmt,
+    string::ToString,
+};
+use crate::types::SourceCitation;
 
 #[derive(Clone, Debug)]
 #[derive(PartialEq)]
@@ -22,7 +23,7 @@ pub struct Event {
     pub event: EventType,
     pub date: Option<String>,
     pub place: Option<String>,
-    pub source: Option<Xref>,
+    pub citations: Vec<SourceCitation>,
 }
 
 impl Event {
@@ -31,8 +32,16 @@ impl Event {
             event: etype,
             date: None,
             place: None,
-            source: None,
+            citations: Vec::new(),
         }
+    }
+
+    pub fn add_citation(&mut self, citation: SourceCitation) {
+        self.citations.push(citation)
+    }
+
+    pub fn get_citations(&self) -> Vec<SourceCitation> {
+        self.citations.clone()
     }
 }
 

@@ -13,6 +13,7 @@ use crate::types::{
     Gender,
     Individual,
     Name,
+    SourceCitation,
     Submitter,
 };
 
@@ -45,10 +46,11 @@ impl<'a> Parser<'a> {
 
             match &self.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
-                    "HEAD" => self.parse_header(),
-                    "SUBM" => data.add_submitter(self.parse_submitter(level, pointer)),
-                    "INDI" => data.add_individual(self.parse_individual(level, pointer)),
                     "FAM"  => data.add_family(self.parse_family(level, pointer)),
+                    "HEAD" => self.parse_header(),
+                    "INDI" => data.add_individual(self.parse_individual(level, pointer)),
+                    // "SOUR" => data.add_source(self.parse_source(level, pointer)),
+                    "SUBM" => data.add_submitter(self.parse_submitter(level, pointer)),
                     "TRLR" => break,
                     _ => {
                         println!("{} Unhandled tag {}", self.dbg(), tag);
@@ -224,8 +226,9 @@ impl<'a> Parser<'a> {
         while self.tokenizer.current_token != Token::Level(level) {
             match &self.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
-                    "PLAC" => event.place = Some(self.take_line_value()),
                     "DATE" => event.date = Some(self.take_line_value()),
+                    "PLAC" => event.place = Some(self.take_line_value()),
+                    "SOUR" => event.add_citation(self.parse_citation(level + 1)),
                     _ => panic!("{} Unhandled Event Tag: {}", self.dbg(), tag),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
@@ -276,6 +279,30 @@ impl<'a> Parser<'a> {
         }
 
         return address;
+    }
+
+    fn parse_citation(&mut self, level: u8) -> SourceCitation {
+        let mut citation = SourceCitation {
+            xref: self.take_line_value(),
+            page: None,
+        };
+
+        loop {
+            if let Token::Level(cur_level) = self.tokenizer.current_token {
+                if cur_level <= level { break; }
+            }
+            match &self.tokenizer.current_token {
+                Token::Tag(tag) => match tag.as_str() {
+                    "PAGE" => citation.page = Some(self.take_line_value()),
+                    _ => panic!("{} Unhandled Citation Tag: {}", self.dbg(), tag),
+                },
+                Token::Level(_) => self.tokenizer.next_token(),
+                _ => panic!{"Unhandled Citation Token: {:?}", self.tokenizer.current_token},
+            }
+        }
+
+        println!("found citation:\n{:#?}", citation);
+        return citation;
     }
 
     fn parse_string_value(&mut self, level: u8) -> Option<String> {
