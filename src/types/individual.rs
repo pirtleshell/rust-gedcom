@@ -22,18 +22,14 @@ impl Individual {
         }
     }
 
-    pub fn add_family(&mut self, xref: Xref, tag: &str) {
+    pub fn add_family(&mut self, link: FamilyLink) {
         let mut do_add = true;
-        for FamilyLink(family, _) in self.families.iter() {
+        let xref = &link.0;
+        for FamilyLink(family, _, _) in self.families.iter() {
             if family.as_str() == xref.as_str() { do_add = false; }
         }
         if do_add {
-            let link_type = match tag {
-                "FAMC" => FamilyLinkType::Child,
-                "FAMS" => FamilyLinkType::Spouse,
-                _ => panic!("Unrecognized family type tag: {}", tag),
-            };
-            self.families.push(FamilyLink(xref, link_type));
+            self.families.push(link);
         }
     }
 
@@ -58,7 +54,36 @@ enum FamilyLinkType {
 }
 
 #[derive(Debug)]
-pub struct FamilyLink(Xref, FamilyLinkType);
+enum Pedigree {
+    Adopted,
+    Birth,
+    Foster,
+    Sealing
+}
+
+#[derive(Debug)]
+pub struct FamilyLink(Xref, FamilyLinkType, Option<Pedigree>);
+
+impl FamilyLink {
+    pub fn new(xref: Xref, tag: &str) -> FamilyLink {
+        let link_type = match tag {
+            "FAMC" => FamilyLinkType::Child,
+            "FAMS" => FamilyLinkType::Spouse,
+            _ => panic!("Unrecognized family type tag: {}", tag),
+        };
+        FamilyLink(xref, link_type, None)
+    }
+
+    pub fn set_pedigree(&mut self, pedigree_text: &str) {
+        self.2 = match pedigree_text.to_lowercase().as_str() {
+            "adopted" => Some(Pedigree::Adopted),
+            "birth" => Some(Pedigree::Birth),
+            "foster" => Some(Pedigree::Foster),
+            "sealing" => Some(Pedigree::Sealing),
+            _ => panic!("Unrecognized family link pedigree: {}", pedigree_text),
+        };
+    }
+}
 
 #[derive(Debug)]
 pub struct Name {

@@ -9,6 +9,7 @@ use crate::types::{
     Address,
     Event,
     Family,
+    FamilyLink,
     Gender,
     Individual,
     Name,
@@ -117,12 +118,7 @@ impl<'a> Parser<'a> {
                     },
                     "FAMC" | "FAMS" => {
                         let tag_copy = tag.clone();
-                        match self.parse_string_value(level + 1) {
-                            Some(family_xref) => {
-                                individual.add_family(family_xref.to_string(), tag_copy.as_str());
-                            },
-                            None => panic!("No family xref found."),
-                        };
+                        individual.add_family(self.parse_family_link(tag_copy.as_str(), level + 1));
                     },
                     _ => panic!("{} Unhandled Individual Tag: {}", self.dbg(), tag),
                 },
@@ -143,24 +139,9 @@ impl<'a> Parser<'a> {
             match &self.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
                     "MARR" => family.add_event(self.parse_event("MARR", level + 1)),
-                    "HUSB" => {
-                        match self.parse_string_value(level + 1) {
-                            Some(xref) => family.set_individual1(xref),
-                            None => panic!("No HUSB individual link found."),
-                        };
-                    },
-                    "WIFE" => {
-                        match self.parse_string_value(level + 1) {
-                            Some(xref) => family.set_individual2(xref),
-                            None => panic!("No WIFE individual link found."),
-                        };
-                    },
-                    "CHIL" => {
-                        match self.parse_string_value(level + 1) {
-                            Some(xref) => family.add_child(xref),
-                            None => panic!("No CHIL individual link found."),
-                        };
-                    },
+                    "HUSB" => family.set_individual1(self.take_line_value()),
+                    "WIFE" => family.set_individual2(self.take_line_value()),
+                    "CHIL" => family.add_child(self.take_line_value()),
                     _ => panic!("{} Unhandled Family Tag: {}", self.dbg(), tag),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
@@ -170,6 +151,27 @@ impl<'a> Parser<'a> {
 
         println!("found family:\n{:#?}", family);
         return family;
+    }
+
+    fn parse_family_link(&mut self, tag: &str, level: u8) -> FamilyLink {
+        let xref = self.take_line_value();
+        let mut link = FamilyLink::new(xref, tag);
+
+        loop {
+            if let Token::Level(cur_level) = self.tokenizer.current_token {
+                if cur_level <= level { break; }
+            }
+            match &self.tokenizer.current_token {
+                Token::Tag(tag) => match tag.as_str() {
+                    "PEDI" => link.set_pedigree(self.take_line_value().as_str()),
+                    _ => panic!("{} Unhandled FamilyLink Tag: {}", self.dbg(), tag),
+                },
+                Token::Level(_) => self.tokenizer.next_token(),
+                _ => panic!{"Unhandled FamilyLink Token: {:?}", self.tokenizer.current_token},
+            }
+        }
+
+        return link;
     }
 
     fn parse_gender(&mut self) -> Gender {
@@ -301,55 +303,6 @@ impl<'a> Parser<'a> {
 
         println!("found citation:\n{:#?}", citation);
         return citation;
-    }
-
-    fn parse_string_value(&mut self, level: u8) -> Option<String> {
-        self.tokenizer.next_token();
-        let mut ret = String::new();
-
-        if let Token::LineValue(val) = &self.tokenizer.current_token {
-            ret.push_str(&val);
-        } else {
-            return None;
-        }
-
-        self.tokenizer.next_token();
-        match self.check_and_parse_cont(level) {
-            Some(val) => ret.push_str(&val),
-            None => (),
-        }
-
-        return Some(ret);
-    }
-
-    /** checks for CONT tags and returns concatenated string of all consecutive values */
-    fn check_and_parse_cont(&mut self, level: u8) -> Option<String> {
-        let next_level: u8 = level + 1;
-
-        if self.tokenizer.current_token == Token::Level(next_level) {
-            let mut value = String::from(" ");
-            self.tokenizer.next_token();
-
-            match &self.tokenizer.current_token {
-                Token::Tag(tag) => match tag.as_str() {
-                    "CONT" => {
-                        value.push_str(&self.take_line_value());
-
-                        // recursively handle more CONT lines
-                        match self.check_and_parse_cont(level) {
-                            Some(another) => value.push_str(&another),
-                            None => (),
-                        }
-                    },
-                    _ => panic!("{} Unexpected tag while parsing for CONT: {}", self.dbg(), tag),
-                },
-                _ => panic!("Bad accounting in CONT check"),
-            };
-
-            return Some(value);
-        } else {
-            return None;
-        }
     }
 
     fn take_line_value(&mut self) -> String {
