@@ -257,6 +257,9 @@ impl<'a> Parser<'a> {
                         value.push('\n');
                         value.push_str(&self.take_line_value());
                     },
+                    "ADR1" => { address.adr1 = Some(self.take_line_value()); },
+                    "ADR2" => { address.adr2 = Some(self.take_line_value()); },
+                    "ADR3" => { address.adr3 = Some(self.take_line_value()); },
                     "CITY" => { address.city = Some(self.take_line_value()); },
                     "STAE" => { address.state = Some(self.take_line_value()); },
                     "POST" => { address.post = Some(self.take_line_value()); },
