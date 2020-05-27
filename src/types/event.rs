@@ -8,6 +8,7 @@ use crate::types::SourceCitation;
 #[derive(PartialEq)]
 pub enum EventType {
     Birth,
+    Burial,
     Death,
     Marriage,
 }
@@ -34,6 +35,17 @@ impl Event {
             place: None,
             citations: Vec::new(),
         }
+    }
+
+    pub fn from_tag(tag: &str) -> Event {
+        let etype = match tag {
+            "BIRT" => EventType::Birth,
+            "BURI" => EventType::Burial,
+            "DEAT" => EventType::Death,
+            "MARR" => EventType::Marriage,
+            _ => panic!("Unrecognized event tag: {}", tag),
+        };
+        Event::new(etype)
     }
 
     pub fn add_citation(&mut self, citation: SourceCitation) {

@@ -27,7 +27,7 @@ impl<'a> Tokenizer<'a> {
             current_char: '\n',
             current_token: Token::None,
             chars,
-            line: 1,
+            line: 0,
         }
     }
 

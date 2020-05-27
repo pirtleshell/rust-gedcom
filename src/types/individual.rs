@@ -7,8 +7,7 @@ pub struct Individual {
     pub xref: Option<Xref>,
     pub name: Option<Name>,
     pub sex: Gender,
-    pub birth: Option<Event>,
-    pub death: Option<Event>,
+    pub events: Vec<Event>,
     pub families: Vec<FamilyLink>,
 }
 
@@ -18,8 +17,7 @@ impl Individual {
             xref,
             name: None,
             sex: Gender::Unknown,
-            birth: None,
-            death: None,
+            events: Vec::new(),
             families: Vec::new(),
         }
     }
@@ -37,6 +35,10 @@ impl Individual {
             };
             self.families.push(FamilyLink(xref, link_type));
         }
+    }
+
+    pub fn add_event(&mut self, event: Event) {
+        self.events.push(event);
     }
 }
 

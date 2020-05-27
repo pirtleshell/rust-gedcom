@@ -8,7 +8,6 @@ use crate::tree::GedcomData;
 use crate::types::{
     Address,
     Event,
-    EventType,
     Family,
     Gender,
     Individual,
@@ -112,11 +111,9 @@ impl<'a> Parser<'a> {
                     "SEX" => {
                         individual.sex = self.parse_gender();
                     },
-                    "BIRT" => {
-                        individual.birth = Some(self.parse_event(EventType::Birth, level + 1));
-                    },
-                    "DEAT" => {
-                        individual.death = Some(self.parse_event(EventType::Death, level + 1));
+                    "BIRT" | "BURI" | "DEAT" => {
+                        let tag_clone = tag.clone();
+                        individual.add_event(self.parse_event(tag_clone.as_str(), level + 1));
                     },
                     "FAMC" | "FAMS" => {
                         let tag_copy = tag.clone();
@@ -145,9 +142,7 @@ impl<'a> Parser<'a> {
         while self.tokenizer.current_token != Token::Level(level) {
             match &self.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
-                    "MARR" => family.add_event(
-                      self.parse_event(EventType::Marriage, level + 1)
-                    ),
+                    "MARR" => family.add_event(self.parse_event("MARR", level + 1)),
                     "HUSB" => {
                         match self.parse_string_value(level + 1) {
                             Some(xref) => family.set_individual1(xref),
@@ -220,9 +215,9 @@ impl<'a> Parser<'a> {
         return name;
     }
 
-    fn parse_event(&mut self, etype: EventType, level: u8) -> Event {
+    fn parse_event(&mut self, tag: &str, level: u8) -> Event {
         self.tokenizer.next_token();
-        let mut event = Event::new(etype);
+        let mut event = Event::from_tag(tag);
         while self.tokenizer.current_token != Token::Level(level) {
             match &self.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
