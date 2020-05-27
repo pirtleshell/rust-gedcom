@@ -52,6 +52,13 @@ impl<'a> Tokenizer<'a> {
 
         self.skip_whitespace();
 
+        // handle tag with trailing whitespace
+        if self.current_char == '\n' {
+            println!("line {}: trailing whitespace {:?}", self.line, self.current_token);
+            self.next_token();
+            return;
+        }
+
         self.current_token = match self.current_token {
             Token::Level(_) => {
                 if self.current_char == '@' {
@@ -62,7 +69,7 @@ impl<'a> Tokenizer<'a> {
             },
             Token::Pointer(_) => { Token::Tag(self.extract_word())},
             Token::Tag(_) => { Token::LineValue(self.extract_value()) },
-            _ => panic!("Tokenization error!"),
+            _ => panic!("line {}: Tokenization error! {:?}", self.line, self.current_token),
         };
     }
 
@@ -101,7 +108,7 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn skip_whitespace(&mut self) {
-        while self.current_char.is_whitespace() {
+        while self.current_char.is_whitespace() && self.current_char != '\n' {
             self.next_char();
         }
     }

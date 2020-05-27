@@ -111,7 +111,7 @@ impl<'a> Parser<'a> {
                     "SEX" => {
                         individual.sex = self.parse_gender();
                     },
-                    "BIRT" | "BURI" | "DEAT" => {
+                    "BIRT" | "BURI" | "DEAT" | "RESI" => {
                         let tag_clone = tag.clone();
                         individual.add_event(self.parse_event(tag_clone.as_str(), level + 1));
                     },
@@ -218,7 +218,10 @@ impl<'a> Parser<'a> {
     fn parse_event(&mut self, tag: &str, level: u8) -> Event {
         self.tokenizer.next_token();
         let mut event = Event::from_tag(tag);
-        while self.tokenizer.current_token != Token::Level(level) {
+        loop {
+            if let Token::Level(cur_level) = self.tokenizer.current_token {
+                if cur_level <= level { break; }
+            }
             match &self.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
                     "DATE" => event.date = Some(self.take_line_value()),

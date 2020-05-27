@@ -11,6 +11,7 @@ pub enum EventType {
     Burial,
     Death,
     Marriage,
+    Residence,
 }
 
 impl ToString for EventType {
@@ -43,6 +44,7 @@ impl Event {
             "BURI" => EventType::Burial,
             "DEAT" => EventType::Death,
             "MARR" => EventType::Marriage,
+            "RESI" => EventType::Residence,
             _ => panic!("Unrecognized event tag: {}", tag),
         };
         Event::new(etype)
