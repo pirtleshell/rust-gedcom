@@ -253,7 +253,10 @@ impl<'a> Parser<'a> {
             }
             match &self.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
-                    "CONT" => { value.push_str(&self.take_line_value()); },
+                    "CONT" => {
+                        value.push('\n');
+                        value.push_str(&self.take_line_value());
+                    },
                     "CITY" => { address.city = Some(self.take_line_value()); },
                     "STAE" => { address.state = Some(self.take_line_value()); },
                     "POST" => { address.post = Some(self.take_line_value()); },

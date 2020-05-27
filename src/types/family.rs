@@ -53,4 +53,8 @@ impl Family {
         }
         self.events.push(event);
     }
+
+    pub fn get_events(&self) -> Vec<Event> {
+        self.events.clone()
+    }
 }

@@ -1,8 +1,9 @@
 use std::fmt;
+use std::string::ToString;
 
 type Xref = String;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 #[derive(PartialEq)]
 pub enum EventType {
     Birth,
@@ -10,6 +11,13 @@ pub enum EventType {
     Marriage,
 }
 
+impl ToString for EventType {
+    fn to_string(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+#[derive(Clone)]
 pub struct Event {
     pub event: EventType,
     pub date: Option<String>,

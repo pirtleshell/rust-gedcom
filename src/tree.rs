@@ -10,12 +10,12 @@ use crate::types::{
 #[derive(Debug)]
 pub struct GedcomData {
     // header:
-    submitters: Vec<Submitter>,
-    individuals: Vec<Individual>,
-    families: Vec<Family>,
-    repositories: Vec<Repository>,
-    sources: Vec<Source>,
-    multimedia: Vec<Media>,
+    pub submitters: Vec<Submitter>,
+    pub individuals: Vec<Individual>,
+    pub families: Vec<Family>,
+    pub repositories: Vec<Repository>,
+    pub sources: Vec<Source>,
+    pub multimedia: Vec<Media>,
 }
 
 // should maybe store these by xref if available?
