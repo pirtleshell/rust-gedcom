@@ -50,4 +50,16 @@ impl GedcomData {
     pub fn add_submitter(&mut self, submitter: Submitter) {
         self.submitters.push(submitter);
     }
+
+    pub fn stats(&self) {
+        println!("----------------------");
+        println!("| Gedcom Data Stats: |");
+        println!("----------------------");
+        println!("  submitters: {}", self.submitters.len());
+        println!("  individuals: {}", self.individuals.len());
+        println!("  families: {}", self.families.len());
+        println!("  sources: {}", self.sources.len());
+        println!("  multimedia: {}", self.multimedia.len());
+        println!("----------------------");
+    }
 }

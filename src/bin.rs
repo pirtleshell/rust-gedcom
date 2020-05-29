@@ -25,6 +25,8 @@ fn main() {
     let mut parser = Parser::new(contents.chars());
     let data = parser.parse_record();
 
+
     println!("Parsing complete!");
     println!("\n\n{:#?}", data);
+    data.stats();
 }

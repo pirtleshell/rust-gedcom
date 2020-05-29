@@ -98,7 +98,7 @@ impl<'a> Parser<'a> {
                 _ => panic!{"Unhandled Submitter Token: {:?}", self.tokenizer.current_token},
             }
         }
-        println!("found submitter:\n{:#?}", submitter);
+        // println!("found submitter:\n{:#?}", submitter);
         return submitter;
     }
 
@@ -130,7 +130,7 @@ impl<'a> Parser<'a> {
                 _ => panic!{"Unhandled Individual Token: {:?}", self.tokenizer.current_token},
             }
         }
-        println!("found individual:\n{:#?}", individual);
+        // println!("found individual:\n{:#?}", individual);
         return individual;
     }
 
@@ -153,7 +153,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        println!("found family:\n{:#?}", family);
+        // println!("found family:\n{:#?}", family);
         return family;
     }
 
@@ -186,7 +186,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        println!("found source:\n{:#?}", source);
+        // println!("found source:\n{:#?}", source);
         return source;
     }
 
@@ -208,7 +208,7 @@ impl<'a> Parser<'a> {
                 _ => panic!{"Unhandled Repository Token: {:?}", self.tokenizer.current_token},
             }
         }
-        println!("found repositiory:\n{:#?}", repo);
+        // println!("found repositiory:\n{:#?}", repo);
         return repo;
     }
 
@@ -364,7 +364,6 @@ impl<'a> Parser<'a> {
             xref: self.take_line_value(),
             page: None,
         };
-
         loop {
             if let Token::Level(cur_level) = self.tokenizer.current_token {
                 if cur_level <= level { break; }
@@ -378,8 +377,6 @@ impl<'a> Parser<'a> {
                 _ => panic!{"Unhandled Citation Token: {:?}", self.tokenizer.current_token},
             }
         }
-
-        println!("found citation:\n{:#?}", citation);
         return citation;
     }
 
