@@ -1,3 +1,5 @@
+#![deny(clippy::pedantic)]
+
 #[macro_use]
 mod util;
 

@@ -48,6 +48,7 @@ pub struct Submitter {
 }
 
 impl Submitter {
+    #[must_use]
     pub fn new(xref: Option<Xref>) -> Submitter {
         Submitter {
             xref,

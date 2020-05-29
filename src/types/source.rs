@@ -10,6 +10,7 @@ pub struct Source {
 }
 
 impl Source {
+    #[must_use]
     pub fn new(xref: Option<String>) -> Source {
         Source {
             xref,
@@ -28,6 +29,7 @@ impl Source {
     }
 }
 
+#[allow(clippy::module_name_repetitions)]
 #[derive(Debug)]
 pub struct SourceData {
     events: Vec<Event>,

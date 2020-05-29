@@ -1,5 +1,6 @@
 use std::fmt;
 
+#[derive(Default)]
 pub struct Address {
     pub value: Option<String>,
     pub adr1: Option<String>,
@@ -9,21 +10,6 @@ pub struct Address {
     pub state: Option<String>,
     pub post: Option<String>,
     pub country: Option<String>,
-}
-
-impl Address {
-    pub fn new() -> Address {
-        Address {
-            value: None,
-            adr1: None,
-            adr2: None,
-            adr3: None,
-            city: None,
-            state: None,
-            post: None,
-            country: None,
-        }
-    }
 }
 
 impl fmt::Debug for Address {

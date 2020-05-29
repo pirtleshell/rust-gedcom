@@ -4,8 +4,8 @@ use std::{
 };
 use crate::types::SourceCitation;
 
-#[derive(Clone, Debug)]
-#[derive(PartialEq)]
+#[allow(clippy::module_name_repetitions)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum EventType {
     Adoption,
     Birth,
@@ -34,6 +34,7 @@ pub struct Event {
 }
 
 impl Event {
+    #[must_use]
     pub fn new(etype: EventType) -> Event {
         Event {
             event: etype,
@@ -43,11 +44,12 @@ impl Event {
         }
     }
 
-    /** converts an event to be of type SourceData with `value` as the data */
+    /** converts an event to be of type `SourceData` with `value` as the data */
     pub fn with_source_data(&mut self, value: String) {
         self.event = EventType::SourceData(value);
     }
 
+    #[must_use]
     pub fn from_tag(tag: &str) -> Event {
         let etype = match tag {
             "ADOP" => EventType::Adoption,
@@ -66,6 +68,7 @@ impl Event {
         self.citations.push(citation)
     }
 
+    #[must_use]
     pub fn get_citations(&self) -> Vec<SourceCitation> {
         self.citations.clone()
     }

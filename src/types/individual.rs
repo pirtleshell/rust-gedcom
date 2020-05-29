@@ -12,7 +12,8 @@ pub struct Individual {
 }
 
 impl Individual {
-    pub fn empty(xref: Option<Xref>) -> Individual {
+    #[must_use]
+    pub fn new(xref: Option<Xref>) -> Individual {
         Individual {
             xref,
             name: None,
@@ -25,7 +26,7 @@ impl Individual {
     pub fn add_family(&mut self, link: FamilyLink) {
         let mut do_add = true;
         let xref = &link.0;
-        for FamilyLink(family, _, _) in self.families.iter() {
+        for FamilyLink(family, _, _) in &self.families {
             if family.as_str() == xref.as_str() { do_add = false; }
         }
         if do_add {
@@ -65,6 +66,7 @@ enum Pedigree {
 pub struct FamilyLink(Xref, FamilyLinkType, Option<Pedigree>);
 
 impl FamilyLink {
+    #[must_use]
     pub fn new(xref: Xref, tag: &str) -> FamilyLink {
         let link_type = match tag {
             "FAMC" => FamilyLinkType::Child,

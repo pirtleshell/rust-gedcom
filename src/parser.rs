@@ -25,6 +25,7 @@ pub struct Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
+    #[must_use]
     pub fn new(chars: Chars<'a>) -> Parser {
         let mut tokenizer = Tokenizer::new(chars);
         tokenizer.next_token();
@@ -32,7 +33,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_record(&mut self) -> GedcomData {
-        let mut data = GedcomData::new();
+        let mut data = GedcomData::default();
         loop {
             let level = match self.tokenizer.current_token {
                 Token::Level(n) => n,
@@ -47,8 +48,8 @@ impl<'a> Parser<'a> {
                 self.tokenizer.next_token();
             }
 
-            match &self.tokenizer.current_token {
-                Token::Tag(tag) => match tag.as_str() {
+            if let Token::Tag(tag) = &self.tokenizer.current_token {
+                match tag.as_str() {
                     "FAM"  => data.add_family(self.parse_family(level, pointer)),
                     "HEAD" => self.parse_header(),
                     "INDI" => data.add_individual(self.parse_individual(level, pointer)),
@@ -60,15 +61,14 @@ impl<'a> Parser<'a> {
                         println!("{} Unhandled tag {}", self.dbg(), tag);
                         self.tokenizer.next_token();
                     },
-                },
-                _ => {
-                    println!("{} Unhandled token {:?}", self.dbg(), self.tokenizer.current_token);
-                    self.tokenizer.next_token();
-                },
+                };
+            } else {
+                println!("{} Unhandled token {:?}", self.dbg(), self.tokenizer.current_token);
+                self.tokenizer.next_token();
             };
         }
 
-        return data;
+        data
     }
 
     fn parse_header(&mut self) {
@@ -99,13 +99,13 @@ impl<'a> Parser<'a> {
             }
         }
         // println!("found submitter:\n{:#?}", submitter);
-        return submitter;
+        submitter
     }
 
     fn parse_individual(&mut self, level: u8, xref: Option<String>) -> Individual {
         // skip over INDI tag name
         self.tokenizer.next_token();
-        let mut individual = Individual::empty(xref);
+        let mut individual = Individual::new(xref);
 
         while self.tokenizer.current_token != Token::Level(level) {
             match &self.tokenizer.current_token {
@@ -131,7 +131,7 @@ impl<'a> Parser<'a> {
             }
         }
         // println!("found individual:\n{:#?}", individual);
-        return individual;
+        individual
     }
 
     fn parse_family(&mut self, level: u8, xref: Option<String>) -> Family {
@@ -154,7 +154,7 @@ impl<'a> Parser<'a> {
         }
 
         // println!("found family:\n{:#?}", family);
-        return family;
+        family
     }
 
     fn parse_source(&mut self, level: u8, xref: Option<String>) -> Source {
@@ -187,7 +187,7 @@ impl<'a> Parser<'a> {
         }
 
         // println!("found source:\n{:#?}", source);
-        return source;
+        source
     }
 
     fn parse_repository(&mut self, level: u8, xref: Option<String>) -> Repository {
@@ -209,7 +209,7 @@ impl<'a> Parser<'a> {
             }
         }
         // println!("found repositiory:\n{:#?}", repo);
-        return repo;
+        repo
     }
 
     fn parse_family_link(&mut self, tag: &str, level: u8) -> FamilyLink {
@@ -230,7 +230,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        return link;
+        link
     }
 
     fn parse_repo_citation(&mut self, level: u8) -> RepoCitation {
@@ -249,7 +249,7 @@ impl<'a> Parser<'a> {
                 _ => panic!{"Unhandled RepoCitation Token: {:?}", self.tokenizer.current_token},
             }
         }
-        return citation;
+        citation
     }
 
     fn parse_gender(&mut self) -> Gender {
@@ -267,7 +267,7 @@ impl<'a> Parser<'a> {
             panic!("Expected gender LineValue, found {:?}", self.tokenizer.current_token);
         }
         self.tokenizer.next_token();
-        return gender;
+        gender
     }
 
     fn parse_name(&mut self, level: u8) -> Name {
@@ -292,7 +292,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        return name;
+        name
     }
 
     fn parse_event(&mut self, tag: &str, level: u8) -> Event {
@@ -313,13 +313,13 @@ impl<'a> Parser<'a> {
                 _ => panic!{"Unhandled Event Token: {:?}", self.tokenizer.current_token},
             }
         }
-        return event;
+        event
     }
 
     fn parse_address(&mut self, level: u8) -> Address {
         // skip ADDR tag
         self.tokenizer.next_token();
-        let mut address = Address::new();
+        let mut address = Address::default();
         let mut value = String::new();
 
         // handle value on ADDR line
@@ -356,7 +356,7 @@ impl<'a> Parser<'a> {
             address.value = Some(value);
         }
 
-        return address;
+        address
     }
 
     fn parse_citation(&mut self, level: u8) -> SourceCitation {
@@ -377,7 +377,7 @@ impl<'a> Parser<'a> {
                 _ => panic!{"Unhandled Citation Token: {:?}", self.tokenizer.current_token},
             }
         }
-        return citation;
+        citation
     }
 
     fn take_continued_text(&mut self, level: u8) -> String {
@@ -398,15 +398,15 @@ impl<'a> Parser<'a> {
             }
         }
 
-        return value;
+        value
     }
 
     fn take_line_value(&mut self) -> String {
-        let mut _value = String::new();
+        let value: String;
         self.tokenizer.next_token();
 
         if let Token::LineValue(val) = &self.tokenizer.current_token {
-            _value = val.to_string();
+            value = val.to_string();
         } else {
             panic!(
                 "{} Expected LineValue, found {:?}",
@@ -415,7 +415,7 @@ impl<'a> Parser<'a> {
             );
         }
         self.tokenizer.next_token();
-        return _value;
+        value
     }
 
     fn dbg(&self) -> String {

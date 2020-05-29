@@ -15,6 +15,7 @@ pub struct Family {
 }
 
 impl Family {
+    #[must_use]
     pub fn new(xref: Option<Xref>) -> Family {
         Family {
             xref,
@@ -46,7 +47,7 @@ impl Family {
 
     pub fn add_event(&mut self, event: Event) {
         let event_type = &event.event;
-        for e in self.events.iter() {
+        for e in &self.events {
             if &e.event == event_type {
                 panic!("Family already has a {:?} event", e.event);
             }
@@ -54,6 +55,7 @@ impl Family {
         self.events.push(event);
     }
 
+    #[must_use]
     pub fn get_events(&self) -> Vec<Event> {
         self.events.clone()
     }

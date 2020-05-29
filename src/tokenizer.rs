@@ -22,6 +22,7 @@ pub struct Tokenizer<'a> {
 }
 
 impl<'a> Tokenizer<'a> {
+    #[must_use]
     pub fn new(chars: Chars<'a>) -> Tokenizer {
         Tokenizer {
             current_char: '\n',
@@ -31,6 +32,7 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
+    #[must_use]
     pub fn done(&self) -> bool {
         self.current_token == Token::EOF
     }
