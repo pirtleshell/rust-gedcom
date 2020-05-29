@@ -14,6 +14,7 @@ use crate::types::{
     Individual,
     Name,
     RepoCitation,
+    Repository,
     Source,
     SourceCitation,
     Submitter,
@@ -51,6 +52,7 @@ impl<'a> Parser<'a> {
                     "FAM"  => data.add_family(self.parse_family(level, pointer)),
                     "HEAD" => self.parse_header(),
                     "INDI" => data.add_individual(self.parse_individual(level, pointer)),
+                    "REPO" => data.add_repository(self.parse_repository(level, pointer)),
                     "SOUR" => data.add_source(self.parse_source(level, pointer)),
                     "SUBM" => data.add_submitter(self.parse_submitter(level, pointer)),
                     "TRLR" => break,
@@ -186,6 +188,28 @@ impl<'a> Parser<'a> {
 
         println!("found source:\n{:#?}", source);
         return source;
+    }
+
+    fn parse_repository(&mut self, level: u8, xref: Option<String>) -> Repository {
+        // skip REPO tag
+        self.tokenizer.next_token();
+        let mut repo = Repository { xref, name: None, address: None };
+        loop {
+            if let Token::Level(cur_level) = self.tokenizer.current_token {
+                if cur_level <= level { break; }
+            }
+            match &self.tokenizer.current_token {
+                Token::Tag(tag) => match tag.as_str() {
+                    "NAME" => repo.name = Some(self.take_line_value()),
+                    "ADDR" => repo.address = Some(self.parse_address(level + 1)),
+                    _ => panic!("{} Unhandled Repository Tag: {}", self.dbg(), tag),
+                },
+                Token::Level(_) => self.tokenizer.next_token(),
+                _ => panic!{"Unhandled Repository Token: {:?}", self.tokenizer.current_token},
+            }
+        }
+        println!("found repositiory:\n{:#?}", repo);
+        return repo;
     }
 
     fn parse_family_link(&mut self, tag: &str, level: u8) -> FamilyLink {

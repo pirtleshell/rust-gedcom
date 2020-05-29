@@ -21,7 +21,11 @@ pub use source::*;
 pub struct Media {}
 
 #[derive(Debug)]
-pub struct Repository {}
+pub struct Repository {
+    pub xref: Option<Xref>,
+    pub name: Option<String>,
+    pub address: Option<Address>,
+}
 
 #[derive(Clone, Debug)]
 pub struct SourceCitation {
