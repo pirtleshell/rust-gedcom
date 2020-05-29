@@ -7,11 +7,16 @@ use crate::types::SourceCitation;
 #[derive(Clone, Debug)]
 #[derive(PartialEq)]
 pub enum EventType {
+    Adoption,
     Birth,
     Burial,
     Death,
     Marriage,
     Residence,
+    SourceData(String),
+
+    // "Other" is used to construct an event without requiring an explicit event type
+    Other,
 }
 
 impl ToString for EventType {
@@ -38,13 +43,20 @@ impl Event {
         }
     }
 
+    /** converts an event to be of type SourceData with `value` as the data */
+    pub fn with_source_data(&mut self, value: String) {
+        self.event = EventType::SourceData(value);
+    }
+
     pub fn from_tag(tag: &str) -> Event {
         let etype = match tag {
+            "ADOP" => EventType::Adoption,
             "BIRT" => EventType::Birth,
             "BURI" => EventType::Burial,
             "DEAT" => EventType::Death,
             "MARR" => EventType::Marriage,
             "RESI" => EventType::Residence,
+            "OTHER" => EventType::Other,
             _ => panic!("Unrecognized event tag: {}", tag),
         };
         Event::new(etype)

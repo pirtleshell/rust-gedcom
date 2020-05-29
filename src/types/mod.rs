@@ -14,19 +14,25 @@ pub use individual::*;
 mod family;
 pub use family::*;
 
+mod source;
+pub use source::*;
+
 #[derive(Debug)]
 pub struct Media {}
 
 #[derive(Debug)]
 pub struct Repository {}
 
-#[derive(Debug)]
-pub struct Source {}
-
 #[derive(Clone, Debug)]
 pub struct SourceCitation {
     pub xref: Xref,
     pub page: Option<String>,
+}
+
+#[derive(Debug)]
+pub struct RepoCitation {
+    pub xref: Xref,
+    pub call_number: Option<String>,
 }
 
 #[derive(Debug)]
