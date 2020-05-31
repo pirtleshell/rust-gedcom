@@ -1,32 +1,52 @@
+use std::env;
+use std::fs;
 use std::path::PathBuf;
 use gedcom::parser::Parser;
-
-fn read_relative(path: &str) -> String {
-    let path_buf: PathBuf = PathBuf::from(path);
-    let absolute_path: PathBuf = std::fs::canonicalize(path_buf).unwrap();
-    println!("{}", absolute_path.display());
-    std::fs::read_to_string(absolute_path).unwrap()
-}
+use gedcom::GedcomData;
 
 fn main() {
-    // let current_dir = std::env::current_dir().unwrap();
-    // println!("{}", current_dir.display());
-    // println!();
+    let args: Vec<String> = env::args().collect();
+    match args.len() {
+        1 => usage("Missing filename."),
+        s if s > 2 => usage(&format!("Found more args than expected: {:?}", &args[1..])),
+        _ => (),
+    };
 
-    // let contents = read_relative("./tests/fixtures/simple.ged");
-    // // println!("{}", contents);
-    // let mut parser = Parser::new(contents.chars());
-    // let data = parser.parse_record();
+    let filename = &args[1];
 
-    // println!("Parsing complete!");
-    // println!("\n\n{:#?}", data);
+    if filename == "--help" || filename == "-h" {
+        usage("");
+    }
 
-    let contents = read_relative("./tests/fixtures/sample.ged");
-    let mut parser = Parser::new(contents.chars());
-    let data = parser.parse_record();
+    let data: GedcomData;
 
+    if let Ok(contents) = read_relative(filename) {
+        let mut parser = Parser::new(contents.chars());
+        data = parser.parse_record();
 
-    println!("Parsing complete!");
-    println!("\n\n{:#?}", data);
-    data.stats();
+        println!("Parsing complete!");
+        println!("\n\n{:#?}", data);
+        data.stats();
+    } else {
+        exit_with_error(&format!("File '{}' not found.", filename));
+    }
+}
+
+fn read_relative(path: &str) -> Result<String, std::io::Error> {
+    let path_buf: PathBuf = PathBuf::from(path);
+    let absolute_path: PathBuf = fs::canonicalize(path_buf)?;
+    fs::read_to_string(absolute_path)
+}
+
+fn usage(msg: &str) {
+    if !msg.is_empty() {
+        println!("{}", msg);
+    }
+    println!("Usage: parse_gedcom ./path/to/gedcom.ged");
+    std::process::exit(0x0100);
+}
+
+fn exit_with_error(msg: &str) {
+    println!("Error! {}", msg);
+    std::process::exit(0x1);
 }

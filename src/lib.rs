@@ -6,4 +6,6 @@ mod util;
 pub mod tokenizer;
 pub mod types;
 pub mod parser;
-pub mod tree;
+
+mod tree;
+pub use tree::GedcomData;
