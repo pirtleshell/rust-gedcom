@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
     use gedcom::parser::Parser;
+    use std::path::PathBuf;
 
     fn read_relative(path: &str) -> String {
         let path_buf: PathBuf = PathBuf::from(path);
@@ -22,13 +22,25 @@ mod tests {
 
         // names
         assert_eq!(
-            data.individuals[0].name.as_ref().unwrap().value.as_ref().unwrap(),
+            data.individuals[0]
+                .name
+                .as_ref()
+                .unwrap()
+                .value
+                .as_ref()
+                .unwrap(),
             "/Father/"
         );
 
         // addresses
         assert_eq!(
-            data.submitters[0].address.as_ref().unwrap().value.as_ref().unwrap(),
+            data.submitters[0]
+                .address
+                .as_ref()
+                .unwrap()
+                .value
+                .as_ref()
+                .unwrap(),
             "Submitters address\naddress continued here"
         );
 

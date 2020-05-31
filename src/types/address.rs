@@ -25,6 +25,6 @@ impl fmt::Debug for Address {
         fmt_optional_value!(debug, "post", &self.post);
         fmt_optional_value!(debug, "country", &self.country);
 
-         debug.finish()
+        debug.finish()
     }
 }

@@ -27,7 +27,9 @@ impl Individual {
         let mut do_add = true;
         let xref = &link.0;
         for FamilyLink(family, _, _) in &self.families {
-            if family.as_str() == xref.as_str() { do_add = false; }
+            if family.as_str() == xref.as_str() {
+                do_add = false;
+            }
         }
         if do_add {
             self.families.push(link);
@@ -59,7 +61,7 @@ enum Pedigree {
     Adopted,
     Birth,
     Foster,
-    Sealing
+    Sealing,
 }
 
 #[derive(Debug)]

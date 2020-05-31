@@ -3,8 +3,7 @@ use std::str::Chars;
 // making use of FamilySearch's GEDCOM Standard Release 5.5.1
 // https://www.familysearch.org/wiki/en/GEDCOM
 // gedcom_line: level + delim + [optional_xref_ID] + tag + [optional_line_value] + terminator
-#[derive(Debug)]
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum Token {
     Level(u8),
     Tag(String),
@@ -44,7 +43,9 @@ impl<'a> Tokenizer<'a> {
         }
 
         // level number is at the start of each line.
-        if self.current_char == '\r' { self.next_char(); }
+        if self.current_char == '\r' {
+            self.next_char();
+        }
         if self.current_char == '\n' {
             self.next_char();
             self.current_token = Token::Level(self.extract_number());
@@ -68,10 +69,13 @@ impl<'a> Tokenizer<'a> {
                 } else {
                     Token::Tag(self.extract_word())
                 }
-            },
-            Token::Pointer(_) => { Token::Tag(self.extract_word())},
-            Token::Tag(_) => { Token::LineValue(self.extract_value()) },
-            _ => panic!("line {}: Tokenization error! {:?}", self.line, self.current_token),
+            }
+            Token::Pointer(_) => Token::Tag(self.extract_word()),
+            Token::Tag(_) => Token::LineValue(self.extract_value()),
+            _ => panic!(
+                "line {}: Tokenization error! {:?}",
+                self.line, self.current_token
+            ),
         };
     }
 
@@ -115,11 +119,3 @@ impl<'a> Tokenizer<'a> {
         }
     }
 }
-
-// #[cfg(test)]
-// mod test {
-//     use super::*;
-
-//     #[test]
-//     fn parses_tokens() {}
-// }

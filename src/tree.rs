@@ -1,11 +1,4 @@
-use crate::types::{
-    Family,
-    Individual,
-    Media,
-    Repository,
-    Source,
-    Submitter,
-};
+use crate::types::{Family, Individual, Media, Repository, Source, Submitter};
 
 #[derive(Debug, Default)]
 pub struct GedcomData {

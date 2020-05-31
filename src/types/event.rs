@@ -1,8 +1,5 @@
-use std::{
-    fmt,
-    string::ToString,
-};
 use crate::types::SourceCitation;
+use std::{fmt, string::ToString};
 
 #[allow(clippy::module_name_repetitions)]
 #[derive(Clone, Debug, PartialEq)]
@@ -82,6 +79,6 @@ impl std::fmt::Debug for Event {
         fmt_optional_value!(debug, "date", &self.date);
         fmt_optional_value!(debug, "place", &self.place);
 
-         debug.finish()
+        debug.finish()
     }
 }

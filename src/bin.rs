@@ -1,8 +1,8 @@
+use gedcom::parser::Parser;
+use gedcom::GedcomData;
 use std::env;
 use std::fs;
 use std::path::PathBuf;
-use gedcom::parser::Parser;
-use gedcom::GedcomData;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
