@@ -75,7 +75,7 @@ impl<'a> Parser<'a> {
         while self.tokenizer.current_token != Token::Level(0) {
             self.tokenizer.next_token();
         }
-        println!("  handled header");
+        println!("  skipping header");
     }
 
     fn parse_submitter(&mut self, level: u8, xref: Option<String>) -> Submitter {
