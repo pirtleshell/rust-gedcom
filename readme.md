@@ -1,5 +1,9 @@
 # rust-gedcom
 
+<a href="https://crates.io/crates/plotters">
+    <img style="display: inline!important" src="https://img.shields.io/crates/v/gedcom.svg"></img>
+</a>
+
 > a gedcom parser written in rust 🦀
 
 ## About this project
