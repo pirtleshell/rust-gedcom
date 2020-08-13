@@ -1,6 +1,6 @@
 # rust-gedcom
 
-<a href="https://crates.io/crates/plotters">
+<a href="https://crates.io/crates/gedcom">
     <img style="display: inline!important" src="https://img.shields.io/crates/v/gedcom.svg"></img>
 </a>
 <a href="https://docs.rs/gedcom">
