@@ -1,5 +1,6 @@
 use std::fmt;
 
+/// Physical address at which a fact occurs
 #[derive(Default)]
 pub struct Address {
     pub value: Option<String>,

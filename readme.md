@@ -3,6 +3,9 @@
 <a href="https://crates.io/crates/plotters">
     <img style="display: inline!important" src="https://img.shields.io/crates/v/gedcom.svg"></img>
 </a>
+<a href="https://docs.rs/gedcom">
+    <img style="display: inline!important" src="https://docs.rs/gedcom/badge.svg"></img>
+</a>
 
 > a gedcom parser written in rust 🦀
 

@@ -1,3 +1,4 @@
+//! The state machine that parses a char iterator of the gedcom's contents
 use std::{panic, str::Chars};
 
 use crate::tokenizer::{Token, Tokenizer};
@@ -7,11 +8,13 @@ use crate::types::{
     SourceCitation, Submitter,
 };
 
+/// The Gedcom parser that converts the token list into a data structure
 pub struct Parser<'a> {
     tokenizer: Tokenizer<'a>,
 }
 
 impl<'a> Parser<'a> {
+    /// Creates a parser state machine for parsing a gedcom file as a chars iterator
     #[must_use]
     pub fn new(chars: Chars<'a>) -> Parser {
         let mut tokenizer = Tokenizer::new(chars);
@@ -19,6 +22,7 @@ impl<'a> Parser<'a> {
         Parser { tokenizer }
     }
 
+    /// Does the actual parsing of the record.
     pub fn parse_record(&mut self) -> GedcomData {
         let mut data = GedcomData::default();
         loop {

@@ -22,6 +22,7 @@ impl ToString for EventType {
     }
 }
 
+/// Event fact
 #[derive(Clone)]
 pub struct Event {
     pub event: EventType,

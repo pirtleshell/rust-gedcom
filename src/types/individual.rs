@@ -2,6 +2,7 @@ use crate::types::Event;
 
 type Xref = String;
 
+/// A Person within the family tree
 #[derive(Debug)]
 pub struct Individual {
     pub xref: Option<Xref>,
@@ -41,6 +42,7 @@ impl Individual {
     }
 }
 
+/// Gender of an `Individual`
 #[derive(Debug)]
 pub enum Gender {
     Male,

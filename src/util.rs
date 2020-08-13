@@ -1,3 +1,4 @@
+/// Macro for displaying `Option`s in debug mode without the text wrapping.
 #[macro_export]
 macro_rules! fmt_optional_value {
     ($debug_struct: ident, $prop: literal, $val: expr) => {

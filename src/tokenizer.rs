@@ -1,26 +1,40 @@
+//! Handles the tokenization of a GEDCOM file
 use std::str::Chars;
 
-// making use of FamilySearch's GEDCOM Standard Release 5.5.1
-// https://www.familysearch.org/wiki/en/GEDCOM
-// gedcom_line: level + delim + [optional_xref_ID] + tag + [optional_line_value] + terminator
+/// The base enum of Token types
+///
+/// making use of [GEDCOM Standard Release 5.5.1](https://edge.fscdn.org/assets/img/documents/ged551-5bac5e57fe88dd37df0e153d9c515335.pdf), p.11
+/// `gedcom_line: level + delim + [optional_xref_ID] + tag + [optional_line_value] + terminator`
 #[derive(Debug, PartialEq)]
 pub enum Token {
+    /// The `level`, denoting the depth within the tree
     Level(u8),
+    /// The `tag`, a four character code that distinguishes datatypes
     Tag(String),
+    /// The value of the data: `optional_line_value`
     LineValue(String),
+    /// The `optional_xref_ID` used throughout the file to refer to a particular face
     Pointer(String),
+    /// End-of-file indicator
     EOF,
+    /// The initial token value, indicating nothing
     None,
 }
 
+/// The tokenizer that turns the gedcom characters into a list of tokens
 pub struct Tokenizer<'a> {
+    /// The active token type
     pub current_token: Token,
+    /// Current character tokenizer is parsing
     current_char: char,
+    /// An iterator of charaters of the Gedcom file contents
     chars: Chars<'a>,
+    /// The current line number of the file we are parsing
     pub line: u32,
 }
 
 impl<'a> Tokenizer<'a> {
+    /// Creates a new tokenizer for a char interator of gedcom file contents
     #[must_use]
     pub fn new(chars: Chars<'a>) -> Tokenizer {
         Tokenizer {
@@ -31,11 +45,13 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
+    /// Ends the tokenization
     #[must_use]
     pub fn done(&self) -> bool {
         self.current_token == Token::EOF
     }
 
+    /// Loads the next token into state
     pub fn next_token(&mut self) {
         if self.current_char == '\0' {
             self.current_token = Token::EOF;

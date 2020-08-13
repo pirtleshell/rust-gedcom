@@ -1,6 +1,7 @@
 use crate::types::{Event, RepoCitation};
 
 #[derive(Debug)]
+/// Source for genealogy facts
 pub struct Source {
     pub xref: Option<String>,
     pub data: SourceData,

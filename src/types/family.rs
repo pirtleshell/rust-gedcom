@@ -2,10 +2,12 @@ use crate::types::Event;
 
 type Xref = String;
 
+/// Family fact, representing a relationship between `Individual`s
+///
+/// This data representation understands that HUSB & WIFE are just poorly-named
+/// pointers to individals. no gender "validating" is done on parse.
 #[derive(Debug)]
 pub struct Family {
-    // this data representation understands that HUSB & WIFE are just poorly-named
-    // pointers to individals. no gender "validating" is done on parse.
     pub xref: Option<Xref>,
     pub individual1: Option<Xref>, // mapped from HUSB
     pub individual2: Option<Xref>, // mapped from WIFE
