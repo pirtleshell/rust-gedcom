@@ -30,6 +30,7 @@ parse_gedcom ./tests/fixtures/sample.ged
 #   submitters: 1
 #   individuals: 3
 #   families: 2
+#   repositories: 1
 #   sources: 1
 #   multimedia: 0
 # ----------------------

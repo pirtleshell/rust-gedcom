@@ -53,6 +53,7 @@ impl GedcomData {
         println!("  submitters: {}", self.submitters.len());
         println!("  individuals: {}", self.individuals.len());
         println!("  families: {}", self.families.len());
+        println!("  repositories: {}", self.repositories.len());
         println!("  sources: {}", self.sources.len());
         println!("  multimedia: {}", self.multimedia.len());
         println!("----------------------");
