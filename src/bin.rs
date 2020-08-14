@@ -1,3 +1,5 @@
+extern crate log;
+use log::{info, error};
 use gedcom::parser::Parser;
 use gedcom::GedcomData;
 use std::env;
@@ -24,8 +26,8 @@ fn main() {
         let mut parser = Parser::new(contents.chars());
         data = parser.parse_record();
 
-        println!("Parsing complete!");
-        println!("\n\n{:#?}", data);
+        info!("Parsing complete!");
+        info!("\n\n{:#?}", data);
         data.stats();
     } else {
         exit_with_error(&format!("File '{}' not found.", filename));
@@ -40,13 +42,13 @@ fn read_relative(path: &str) -> Result<String, std::io::Error> {
 
 fn usage(msg: &str) {
     if !msg.is_empty() {
-        println!("{}", msg);
+        info!("{}", msg);
     }
-    println!("Usage: parse_gedcom ./path/to/gedcom.ged");
+    info!("Usage: parse_gedcom ./path/to/gedcom.ged");
     std::process::exit(0x0100);
 }
 
 fn exit_with_error(msg: &str) {
-    println!("Error! {}", msg);
+    error!("Error! {}", msg);
     std::process::exit(0x1);
 }
