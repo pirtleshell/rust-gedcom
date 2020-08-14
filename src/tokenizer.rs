@@ -123,7 +123,7 @@ impl<'a> Tokenizer<'a> {
 
     fn extract_value(&mut self) -> String {
         let mut letters: Vec<char> = Vec::new();
-        while self.current_char != '\n' {
+        while self.current_char != '\n' && self.current_char != '\r' {
             letters.push(self.current_char);
             self.next_char();
         }
@@ -140,6 +140,6 @@ impl<'a> Tokenizer<'a> {
     fn is_nonnewline_whitespace(&self) -> bool {
         let is_zero_width_space = self.current_char as u32 == 65279_u32;
         let not_a_newline = self.current_char != '\n';
-        (self.current_char.is_ascii_whitespace() || is_zero_width_space) && not_a_newline
+        (self.current_char.is_whitespace() || is_zero_width_space) && not_a_newline
     }
 }
