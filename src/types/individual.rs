@@ -91,9 +91,12 @@ impl FamilyLink {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Name {
     pub value: Option<String>,
     pub given: Option<String>,
     pub surname: Option<String>,
+    pub prefix: Option<String>,
+    pub surname_prefix: Option<String>,
+    pub suffix: Option<String>,
 }

@@ -303,11 +303,8 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_name(&mut self, level: u8) -> Name {
-        let mut name = Name {
-            value: Some(self.take_line_value()),
-            given: None,
-            surname: None,
-        };
+        let mut name = Name::default();
+        name.value = Some(self.take_line_value());
 
         loop {
             if let Token::Level(cur_level) = self.tokenizer.current_token {
@@ -318,6 +315,9 @@ impl<'a> Parser<'a> {
             match &self.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
                     "GIVN" => name.given = Some(self.take_line_value()),
+                    "NPFX" => name.prefix = Some(self.take_line_value()),
+                    "NSFX" => name.suffix = Some(self.take_line_value()),
+                    "SPFX" => name.surname_prefix = Some(self.take_line_value()),
                     "SURN" => name.surname = Some(self.take_line_value()),
                     _ => panic!("{} Unhandled Name Tag: {}", self.dbg(), tag),
                 },
