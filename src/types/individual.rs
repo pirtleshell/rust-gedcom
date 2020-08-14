@@ -75,7 +75,11 @@ enum Pedigree {
 }
 
 #[derive(Debug)]
-pub struct FamilyLink(Xref, FamilyLinkType, Option<Pedigree>);
+pub struct FamilyLink (
+    Xref, 
+    FamilyLinkType, 
+    Option<Pedigree>
+);
 
 impl FamilyLink {
     #[must_use]

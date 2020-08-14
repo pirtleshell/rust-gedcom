@@ -1,4 +1,5 @@
 //! Handles the tokenization of a GEDCOM file
+
 use std::str::Chars;
 
 /// The base enum of Token types
