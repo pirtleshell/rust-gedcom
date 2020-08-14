@@ -57,6 +57,12 @@ impl<'a> Parser<'a> {
                         self.tokenizer.next_token();
                     }
                 };
+            } else if let Token::CustomTag(tag) = &self.tokenizer.current_token {
+                // TODO
+                let tag_clone = tag.clone();
+                let custom_data = self.parse_custom_tag(tag_clone);
+                println!("{} Skipping top-level custom tag: {:?}", self.dbg(), custom_data);
+                while self.tokenizer.current_token != Token::Level(0) { self.tokenizer.next_token(); }
             } else {
                 println!(
                     "{} Unhandled token {:?}",
