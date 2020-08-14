@@ -64,6 +64,7 @@ impl<'a> Tokenizer<'a> {
         }
         if self.current_char == '\n' {
             self.next_char();
+
             self.current_token = Token::Level(self.extract_number());
             self.line += 1;
             return;
@@ -100,6 +101,7 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn extract_number(&mut self) -> u8 {
+        self.skip_whitespace();
         let mut digits: Vec<char> = Vec::new();
         while self.current_char.is_digit(10) {
             digits.push(self.current_char);
@@ -130,8 +132,14 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn skip_whitespace(&mut self) {
-        while self.current_char.is_whitespace() && self.current_char != '\n' {
+        while self.is_nonnewline_whitespace() {
             self.next_char();
         }
+    }
+
+    fn is_nonnewline_whitespace(&self) -> bool {
+        let is_zero_width_space = self.current_char as u32 == 65279_u32;
+        let not_a_newline = self.current_char != '\n';
+        (self.current_char.is_ascii_whitespace() || is_zero_width_space) && not_a_newline
     }
 }
