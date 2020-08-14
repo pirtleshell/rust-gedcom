@@ -11,6 +11,7 @@ pub struct Individual {
     pub events: Vec<Event>,
     pub families: Vec<FamilyLink>,
     pub custom_data: Vec<CustomData>,
+    pub last_updated: Option<String>,
 }
 
 impl Individual {
@@ -23,6 +24,7 @@ impl Individual {
             events: Vec::new(),
             families: Vec::new(),
             custom_data: Vec::new(),
+            last_updated: None,
         }
     }
 

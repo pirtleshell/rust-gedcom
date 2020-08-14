@@ -112,19 +112,24 @@ impl<'a> Parser<'a> {
         while self.tokenizer.current_token != Token::Level(level) {
             match &self.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
-                    "NAME" => {
-                        individual.name = Some(self.parse_name(level + 1));
-                    }
-                    "SEX" => {
-                        individual.sex = self.parse_gender();
-                    }
-                    "ADOP" | "BIRT" | "BURI" | "DEAT" | "RESI" => {
+                    "NAME" => individual.name = Some(self.parse_name(level + 1)),
+                    "SEX" => individual.sex = self.parse_gender(),
+                    "ADOP" | "BIRT" | "BAPM" | "BARM" | "BASM" | "BLES" | "BURI" | "CENS" | "CHR" |
+                    "CHRA" | "CONF" | "CREM" | "DEAT" | "EMIG" | "FCOM" | "GRAD" | "IMMI" | "NATU" |
+                    "ORDN" | "RETI" | "RESI" | "PROB" | "WILL" | "EVEN" => {
                         let tag_clone = tag.clone();
                         individual.add_event(self.parse_event(tag_clone.as_str(), level + 1));
                     }
                     "FAMC" | "FAMS" => {
                         let tag_clone = tag.clone();
                         individual.add_family(self.parse_family_link(tag_clone.as_str(), level + 1));
+                    }
+                    "CHAN" => {
+                        // assuming it always only has a single DATE subtag
+                        self.tokenizer.next_token(); // level
+                        self.tokenizer.next_token(); // DATE tag
+                        let date = self.take_line_value();
+                        individual.last_updated = Some(date);
                     }
                     _ => panic!("{} Unhandled Individual Tag: {}", self.dbg(), tag),
                 },
