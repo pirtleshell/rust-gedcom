@@ -4,8 +4,8 @@ use std::{panic, str::Chars};
 use crate::tokenizer::{Token, Tokenizer};
 use crate::tree::GedcomData;
 use crate::types::{
-    Address, Event, Family, FamilyLink, Gender, Individual, Name, RepoCitation, Repository, Source,
-    SourceCitation, Submitter,
+    Address, CustomData, Event, Family, FamilyLink, Gender, Individual, Name, RepoCitation, Repository,
+    Source, SourceCitation, Submitter,
 };
 
 /// The Gedcom parser that converts the token list into a data structure
@@ -57,6 +57,12 @@ impl<'a> Parser<'a> {
                         self.tokenizer.next_token();
                     }
                 };
+            } else if let Token::CustomTag(tag) = &self.tokenizer.current_token {
+                // TODO
+                let tag_clone = tag.clone();
+                let custom_data = self.parse_custom_tag(tag_clone);
+                println!("{} Skipping top-level custom tag: {:?}", self.dbg(), custom_data);
+                while self.tokenizer.current_token != Token::Level(0) { self.tokenizer.next_token(); }
             } else {
                 println!(
                     "{} Unhandled token {:?}",
@@ -112,21 +118,30 @@ impl<'a> Parser<'a> {
         while self.tokenizer.current_token != Token::Level(level) {
             match &self.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
-                    "NAME" => {
-                        individual.name = Some(self.parse_name(level + 1));
-                    }
-                    "SEX" => {
-                        individual.sex = self.parse_gender();
-                    }
-                    "ADOP" | "BIRT" | "BURI" | "DEAT" | "RESI" => {
+                    "NAME" => individual.name = Some(self.parse_name(level + 1)),
+                    "SEX" => individual.sex = self.parse_gender(),
+                    "ADOP" | "BIRT" | "BAPM" | "BARM" | "BASM" | "BLES" | "BURI" | "CENS" | "CHR" |
+                    "CHRA" | "CONF" | "CREM" | "DEAT" | "EMIG" | "FCOM" | "GRAD" | "IMMI" | "NATU" |
+                    "ORDN" | "RETI" | "RESI" | "PROB" | "WILL" | "EVEN" => {
                         let tag_clone = tag.clone();
                         individual.add_event(self.parse_event(tag_clone.as_str(), level + 1));
                     }
                     "FAMC" | "FAMS" => {
-                        let tag_copy = tag.clone();
-                        individual.add_family(self.parse_family_link(tag_copy.as_str(), level + 1));
+                        let tag_clone = tag.clone();
+                        individual.add_family(self.parse_family_link(tag_clone.as_str(), level + 1));
+                    }
+                    "CHAN" => {
+                        // assuming it always only has a single DATE subtag
+                        self.tokenizer.next_token(); // level
+                        self.tokenizer.next_token(); // DATE tag
+                        let date = self.take_line_value();
+                        individual.last_updated = Some(date);
                     }
                     _ => panic!("{} Unhandled Individual Tag: {}", self.dbg(), tag),
+                },
+                Token::CustomTag(tag) => {
+                    let tag_clone = tag.clone();
+                    individual.add_custom_data(self.parse_custom_tag(tag_clone))
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
                 _ => panic!(
@@ -228,6 +243,11 @@ impl<'a> Parser<'a> {
         repo
     }
 
+    fn parse_custom_tag(&mut self, tag: String) -> CustomData {
+        let value = self.take_line_value();
+        CustomData { tag, value }
+    }
+
     fn parse_family_link(&mut self, tag: &str, level: u8) -> FamilyLink {
         let xref = self.take_line_value();
         let mut link = FamilyLink::new(xref, tag);
@@ -303,11 +323,8 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_name(&mut self, level: u8) -> Name {
-        let mut name = Name {
-            value: Some(self.take_line_value()),
-            given: None,
-            surname: None,
-        };
+        let mut name = Name::default();
+        name.value = Some(self.take_line_value());
 
         loop {
             if let Token::Level(cur_level) = self.tokenizer.current_token {
@@ -318,6 +335,9 @@ impl<'a> Parser<'a> {
             match &self.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
                     "GIVN" => name.given = Some(self.take_line_value()),
+                    "NPFX" => name.prefix = Some(self.take_line_value()),
+                    "NSFX" => name.suffix = Some(self.take_line_value()),
+                    "SPFX" => name.surname_prefix = Some(self.take_line_value()),
                     "SURN" => name.surname = Some(self.take_line_value()),
                     _ => panic!("{} Unhandled Name Tag: {}", self.dbg(), tag),
                 },

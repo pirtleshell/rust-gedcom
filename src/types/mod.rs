@@ -57,3 +57,9 @@ pub struct RepoCitation {
     /// Call number to find the source at this repository
     pub call_number: Option<String>,
 }
+
+#[derive(Debug)]
+pub struct CustomData {
+    pub tag: String,
+    pub value: String,
+}

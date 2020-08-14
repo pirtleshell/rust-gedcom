@@ -30,6 +30,7 @@ parse_gedcom ./tests/fixtures/sample.ged
 #   submitters: 1
 #   individuals: 3
 #   families: 2
+#   repositories: 1
 #   sources: 1
 #   multimedia: 0
 # ----------------------
@@ -52,6 +53,10 @@ Here are some notes about parsed data & tags. Page references are to the [Gedcom
 
 Tags for families (`FAM`), individuals (`IND`), repositories (`REPO`), sources (`SOUR`), and submitters (`SUBM`) are handled. Many of the most common sub-tags for these are handled though some may not yet be parsed. Mileage may vary.
 
+
+## Notes to self
+
+* Consider creating some Traits to handle change dates, notes, source citations, and other recurring fields.
 
 ## License
 
