@@ -1,5 +1,13 @@
 //! The state machine that parses a char iterator of the gedcom's contents
-use std::{panic, str::Chars};
+extern crate slog;
+extern crate log;
+use log::{warn, error, info };
+//use slog::{warn, info, error, debug};
+
+use std::str::Chars;
+use std::fs::File;
+use std::io::Read;
+use std::path::PathBuf;
 
 use crate::tokenizer::{Token, Tokenizer};
 use crate::tree::GedcomData;
@@ -21,7 +29,7 @@ impl<'a> Parser<'a> {
         tokenizer.next_token();
         Parser { tokenizer }
     }
-
+    
     /// Does the actual parsing of the record.
     pub fn parse_record(&mut self) -> GedcomData {
         let mut data = GedcomData::default();
@@ -53,12 +61,12 @@ impl<'a> Parser<'a> {
                     "SUBM" => data.add_submitter(self.parse_submitter(level, pointer)),
                     "TRLR" => break,
                     _ => {
-                        println!("{} Unhandled tag {}", self.dbg(), tag);
+                        warn!("{} Unhandled tag {}", self.dbg(), tag);
                         self.tokenizer.next_token();
                     }
                 };
             } else {
-                println!(
+                warn!(
                     "{} Unhandled token {:?}",
                     self.dbg(),
                     self.tokenizer.current_token
@@ -75,7 +83,7 @@ impl<'a> Parser<'a> {
         while self.tokenizer.current_token != Token::Level(0) {
             self.tokenizer.next_token();
         }
-        println!("  skipping header");
+        info!("  skipping header");
     }
 
     fn parse_submitter(&mut self, level: u8, xref: Option<String>) -> Submitter {
@@ -91,16 +99,16 @@ impl<'a> Parser<'a> {
                         submitter.address = Some(self.parse_address(level + 1));
                     }
                     "PHON" => submitter.phone = Some(self.take_line_value()),
-                    _ => panic!("{} Unhandled Submitter Tag: {}", self.dbg(), tag),
+                    _ => error!("{} Unhandled Submitter Tag: {}", self.dbg(), tag),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
-                _ => panic!(
+                _ => error!(
                     "Unhandled Submitter Token: {:?}",
                     self.tokenizer.current_token
                 ),
             }
         }
-        // println!("found submitter:\n{:#?}", submitter);
+        // trace!("found submitter:\n{:#?}", submitter);
         submitter
     }
 
@@ -126,16 +134,16 @@ impl<'a> Parser<'a> {
                         let tag_copy = tag.clone();
                         individual.add_family(self.parse_family_link(tag_copy.as_str(), level + 1));
                     }
-                    _ => panic!("{} Unhandled Individual Tag: {}", self.dbg(), tag),
+                    _ => error!("{} Unhandled Individual Tag: {}", self.dbg(), tag),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
-                _ => panic!(
+                _ => error!(
                     "Unhandled Individual Token: {:?}",
                     self.tokenizer.current_token
                 ),
             }
         }
-        // println!("found individual:\n{:#?}", individual);
+        // trace!("found individual:\n{:#?}", individual);
         individual
     }
 
@@ -151,14 +159,14 @@ impl<'a> Parser<'a> {
                     "HUSB" => family.set_individual1(self.take_line_value()),
                     "WIFE" => family.set_individual2(self.take_line_value()),
                     "CHIL" => family.add_child(self.take_line_value()),
-                    _ => panic!("{} Unhandled Family Tag: {}", self.dbg(), tag),
+                    _ => error!("{} Unhandled Family Tag: {}", self.dbg(), tag),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
-                _ => panic!("Unhandled Family Token: {:?}", self.tokenizer.current_token),
+                _ => error!("Unhandled Family Token: {:?}", self.tokenizer.current_token),
             }
         }
 
-        // println!("found family:\n{:#?}", family);
+        // trace!("found family:\n{:#?}", family);
         family
     }
 
@@ -186,14 +194,14 @@ impl<'a> Parser<'a> {
                     "ABBR" => source.abbreviation = Some(self.take_continued_text(level + 1)),
                     "TITL" => source.title = Some(self.take_continued_text(level + 1)),
                     "REPO" => source.add_repo_citation(self.parse_repo_citation(level + 1)),
-                    _ => panic!("{} Unhandled Source Tag: {}", self.dbg(), tag),
+                    _ => error!("{} Unhandled Source Tag: {}", self.dbg(), tag),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
-                _ => panic!("Unhandled Source Token: {:?}", self.tokenizer.current_token),
+                _ => error!("Unhandled Source Token: {:?}", self.tokenizer.current_token),
             }
         }
 
-        // println!("found source:\n{:#?}", source);
+        // trace!("found source:\n{:#?}", source);
         source
     }
 
@@ -215,16 +223,16 @@ impl<'a> Parser<'a> {
                 Token::Tag(tag) => match tag.as_str() {
                     "NAME" => repo.name = Some(self.take_line_value()),
                     "ADDR" => repo.address = Some(self.parse_address(level + 1)),
-                    _ => panic!("{} Unhandled Repository Tag: {}", self.dbg(), tag),
+                    _ => error!("{} Unhandled Repository Tag: {}", self.dbg(), tag),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
-                _ => panic!(
+                _ => error!(
                     "Unhandled Repository Token: {:?}",
                     self.tokenizer.current_token
                 ),
             }
         }
-        // println!("found repositiory:\n{:#?}", repo);
+        // trace!("found repositiory:\n{:#?}", repo);
         repo
     }
 
@@ -244,7 +252,7 @@ impl<'a> Parser<'a> {
                     _ => panic!("{} Unhandled FamilyLink Tag: {}", self.dbg(), tag),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
-                _ => panic!(
+                _ => error!(
                     "Unhandled FamilyLink Token: {:?}",
                     self.tokenizer.current_token
                 ),
@@ -272,7 +280,7 @@ impl<'a> Parser<'a> {
                     _ => panic!("{} Unhandled RepoCitation Tag: {}", self.dbg(), tag),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
-                _ => panic!(
+                _ => error!(
                     "Unhandled RepoCitation Token: {:?}",
                     self.tokenizer.current_token
                 ),
@@ -319,10 +327,10 @@ impl<'a> Parser<'a> {
                 Token::Tag(tag) => match tag.as_str() {
                     "GIVN" => name.given = Some(self.take_line_value()),
                     "SURN" => name.surname = Some(self.take_line_value()),
-                    _ => panic!("{} Unhandled Name Tag: {}", self.dbg(), tag),
+                    _ => error!("{} Unhandled Name Tag: {}", self.dbg(), tag),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
-                _ => panic!("Unhandled Name Token: {:?}", self.tokenizer.current_token),
+                _ => error!("Unhandled Name Token: {:?}", self.tokenizer.current_token),
             }
         }
 
@@ -343,10 +351,10 @@ impl<'a> Parser<'a> {
                     "DATE" => event.date = Some(self.take_line_value()),
                     "PLAC" => event.place = Some(self.take_line_value()),
                     "SOUR" => event.add_citation(self.parse_citation(level + 1)),
-                    _ => panic!("{} Unhandled Event Tag: {}", self.dbg(), tag),
+                    _ => error!("{} Unhandled Event Tag: {}", self.dbg(), tag),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
-                _ => panic!("Unhandled Event Token: {:?}", self.tokenizer.current_token),
+                _ => error!("Unhandled Event Token: {:?}", self.tokenizer.current_token),
             }
         }
         event
@@ -383,10 +391,10 @@ impl<'a> Parser<'a> {
                     "STAE" => address.state = Some(self.take_line_value()),
                     "POST" => address.post = Some(self.take_line_value()),
                     "CTRY" => address.country = Some(self.take_line_value()),
-                    _ => panic!("{} Unhandled Address Tag: {}", self.dbg(), tag),
+                    _ => error!("{} Unhandled Address Tag: {}", self.dbg(), tag),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
-                _ => panic!(
+                _ => error!(
                     "Unhandled Address Token: {:?}",
                     self.tokenizer.current_token
                 ),
@@ -417,7 +425,7 @@ impl<'a> Parser<'a> {
                     _ => panic!("{} Unhandled Citation Tag: {}", self.dbg(), tag),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
-                _ => panic!(
+                _ => error!(
                     "Unhandled Citation Token: {:?}",
                     self.tokenizer.current_token
                 ),
@@ -448,7 +456,7 @@ impl<'a> Parser<'a> {
                     _ => panic!("{} Unhandled Continuation Tag: {}", self.dbg(), tag),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
-                _ => panic!(
+                _ => error!(
                     "Unhandled Continuation Token: {:?}",
                     self.tokenizer.current_token
                 ),
