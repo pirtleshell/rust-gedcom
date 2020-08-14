@@ -15,6 +15,8 @@ pub enum Token {
     LineValue(String),
     /// The `optional_xref_ID` used throughout the file to refer to a particular face
     Pointer(String),
+    /// A user-defined tag, always begins with an underscore
+    CustomTag(String),
     /// End-of-file indicator
     EOF,
     /// The initial token value, indicating nothing
@@ -83,12 +85,14 @@ impl<'a> Tokenizer<'a> {
             Token::Level(_) => {
                 if self.current_char == '@' {
                     Token::Pointer(self.extract_word())
+                } else if self.current_char == '_' {
+                    Token::CustomTag(self.extract_word())
                 } else {
                     Token::Tag(self.extract_word())
                 }
             }
             Token::Pointer(_) => Token::Tag(self.extract_word()),
-            Token::Tag(_) => Token::LineValue(self.extract_value()),
+            Token::Tag(_) | Token::CustomTag(_) => Token::LineValue(self.extract_value()),
             _ => panic!(
                 "line {}: Tokenization error! {:?}",
                 self.line, self.current_token

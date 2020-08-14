@@ -4,8 +4,8 @@ use std::{panic, str::Chars};
 use crate::tokenizer::{Token, Tokenizer};
 use crate::tree::GedcomData;
 use crate::types::{
-    Address, Event, Family, FamilyLink, Gender, Individual, Name, RepoCitation, Repository, Source,
-    SourceCitation, Submitter,
+    Address, CustomData, Event, Family, FamilyLink, Gender, Individual, Name, RepoCitation, Repository,
+    Source, SourceCitation, Submitter,
 };
 
 /// The Gedcom parser that converts the token list into a data structure
@@ -123,10 +123,14 @@ impl<'a> Parser<'a> {
                         individual.add_event(self.parse_event(tag_clone.as_str(), level + 1));
                     }
                     "FAMC" | "FAMS" => {
-                        let tag_copy = tag.clone();
-                        individual.add_family(self.parse_family_link(tag_copy.as_str(), level + 1));
+                        let tag_clone = tag.clone();
+                        individual.add_family(self.parse_family_link(tag_clone.as_str(), level + 1));
                     }
                     _ => panic!("{} Unhandled Individual Tag: {}", self.dbg(), tag),
+                },
+                Token::CustomTag(tag) => {
+                    let tag_clone = tag.clone();
+                    individual.add_custom_data(self.parse_custom_tag(tag_clone))
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
                 _ => panic!(
@@ -226,6 +230,11 @@ impl<'a> Parser<'a> {
         }
         // println!("found repositiory:\n{:#?}", repo);
         repo
+    }
+
+    fn parse_custom_tag(&mut self, tag: String) -> CustomData {
+        let value = self.take_line_value();
+        CustomData { tag, value }
     }
 
     fn parse_family_link(&mut self, tag: &str, level: u8) -> FamilyLink {
