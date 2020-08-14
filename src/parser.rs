@@ -5,9 +5,7 @@ use log::{warn, error, info };
 //use slog::{warn, info, error, debug};
 
 use std::str::Chars;
-use std::fs::File;
-use std::io::Read;
-use std::path::PathBuf;
+
 
 use crate::tokenizer::{Token, Tokenizer};
 use crate::tree::GedcomData;

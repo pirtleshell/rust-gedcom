@@ -24,6 +24,8 @@ pub use submitter::*;
 mod source;
 pub use source::*;
 
+mod header;
+pub use header::*;
 // TODO
 /// Multimedia item
 #[derive(Debug)]
