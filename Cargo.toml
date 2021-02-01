@@ -1,6 +1,6 @@
 [package]
 name = "gedcom"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Robert Pirtle <astropirtle@gmail.com>"]
 description = "A parser for GEDCOM files"
 keywords = ["genealogy", "gedcom", "parser", "gedcom-parser", "family-trees"]
