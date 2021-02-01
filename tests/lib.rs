@@ -20,6 +20,11 @@ mod tests {
         assert_eq!(data.families.len(), 1);
         assert_eq!(data.submitters.len(), 1);
 
+        // header
+        assert_eq!(data.header.encoding.unwrap().as_str(), "ASCII");
+        assert_eq!(data.header.submitter_tag.unwrap().as_str(), "@SUBMITTER@");
+        assert_eq!(data.header.gedcom_version.unwrap().as_str(), "5.5");
+
         // names
         assert_eq!(
             data.individuals[0]
