@@ -82,6 +82,7 @@ impl<'a> Parser<'a> {
         data
     }
 
+    /// Parses HEAD top-level tag
     fn parse_header(&mut self) -> Header {
         // skip over HEAD tag name
         self.tokenizer.next_token();
@@ -135,6 +136,7 @@ impl<'a> Parser<'a> {
         header
     }
 
+    /// Parses SUBM top-level tag
     fn parse_submitter(&mut self, level: u8, xref: Option<String>) -> Submitter {
         // skip over SUBM tag name
         self.tokenizer.next_token();
@@ -161,6 +163,7 @@ impl<'a> Parser<'a> {
         submitter
     }
 
+    /// Parses INDI top-level tag
     fn parse_individual(&mut self, level: u8, xref: Option<String>) -> Individual {
         // skip over INDI tag name
         self.tokenizer.next_token();
@@ -205,6 +208,7 @@ impl<'a> Parser<'a> {
         individual
     }
 
+    /// Parses FAM top-level tag
     fn parse_family(&mut self, level: u8, xref: Option<String>) -> Family {
         // skip over FAM tag name
         self.tokenizer.next_token();
@@ -263,6 +267,7 @@ impl<'a> Parser<'a> {
         source
     }
 
+    /// Parses REPO top-level tag.
     fn parse_repository(&mut self, level: u8, xref: Option<String>) -> Repository {
         // skip REPO tag
         self.tokenizer.next_token();
@@ -454,6 +459,7 @@ impl<'a> Parser<'a> {
         event
     }
 
+    /// Parses ADDR tag
     fn parse_address(&mut self, level: u8) -> Address {
         // skip ADDR tag
         self.tokenizer.next_token();
@@ -528,6 +534,8 @@ impl<'a> Parser<'a> {
         citation
     }
 
+    /// Takes the value of the current line including handling
+    /// multi-line values from CONT & CONC tags.
     fn take_continued_text(&mut self, level: u8) -> String {
         let mut value = self.take_line_value();
 
@@ -560,6 +568,7 @@ impl<'a> Parser<'a> {
         value
     }
 
+    /// Grabs and returns to the end of the current line as a String
     fn take_line_value(&mut self) -> String {
         let value: String;
         self.tokenizer.next_token();
@@ -577,6 +586,7 @@ impl<'a> Parser<'a> {
         value
     }
 
+    /// Debug function displaying GEDCOM line number of error message.
     fn dbg(&self) -> String {
         format!("line {}:", self.tokenizer.line)
     }
