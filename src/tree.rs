@@ -1,9 +1,10 @@
-use crate::types::{Family, Individual, Media, Repository, Source, Submitter};
+use crate::types::{Family, Header, Individual, Media, Repository, Source, Submitter};
 
 #[derive(Debug, Default)]
 /// The data structure representing all the data within a gedcom file
 pub struct GedcomData {
-    // TODO: header
+    /// Header containing file metadata
+    pub header: Header,
     /// List of submitters of the facts
     pub submitters: Vec<Submitter>,
     /// Individuals within the family tree

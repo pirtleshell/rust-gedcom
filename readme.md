@@ -15,7 +15,9 @@ GEDCOM is a file format for sharing genealogical information like family trees! 
 
 I wanted experience playing with parsers and representing tree structures in Rust, and noticed a parser for Rust did not exist. And thus, this project was born! A fun experiment to practice my Rust abilities.
 
-It hopes to be fully compliant with the [Gedcom 5.5.1 specification](https://edge.fscdn.org/assets/img/documents/ged551-5bac5e57fe88dd37df0e153d9c515335.pdf).
+It hopes to be ~~fully~~ mostly compliant with the [Gedcom 5.5.1 specification](https://edge.fscdn.org/assets/img/documents/ged551-5bac5e57fe88dd37df0e153d9c515335.pdf).
+
+I have found this [5.5.2 specification](https://jfcardinal.github.io/GEDCOM-5.5.2/gedcom-5.5.2.html) useful in its assessment of which tags are worth supporting or not.
 
 ## Usage
 
@@ -46,10 +48,10 @@ Here are some notes about parsed data & tags. Page references are to the [Gedcom
 
 ### Top-level tags
 
-* `HEADER` - p.23 - The header (`HEAD`) and all its containing information is currently skipped.
+* `HEAD.SOUR` - p.42 - The source in the header is currently skipped.
 * `SUBMISSION_RECORD` - p.28 - No attempt at handling this is made.
 * `MULTIMEDIA_RECORD` - p.26 - Multimedia (`OBJE`) is not currently parsed.
-* `NOTE_RECORD` - p.27 - Notes (`NOTE`) are also unhandled.
+* `NOTE_RECORD` - p.27 - Notes (`NOTE`) are also unhandled. (except in header)
 
 Tags for families (`FAM`), individuals (`IND`), repositories (`REPO`), sources (`SOUR`), and submitters (`SUBM`) are handled. Many of the most common sub-tags for these are handled though some may not yet be parsed. Mileage may vary.
 
@@ -60,4 +62,4 @@ Tags for families (`FAM`), individuals (`IND`), repositories (`REPO`), sources (
 
 ## License
 
-© 2020, [Robert Pirtle](https://robert.pirtle.xyz/). licensed under [MIT](license.md).
+© 2021, [Robert Pirtle](https://robert.pirtle.xyz/). licensed under [MIT](license.md).

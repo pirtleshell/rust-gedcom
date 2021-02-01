@@ -12,6 +12,9 @@ pub use address::*;
 type Xref = String;
 
 // top-level record types
+mod header;
+pub use header::*;
+
 mod individual;
 pub use individual::*;
 
