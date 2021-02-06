@@ -90,6 +90,22 @@ impl std::fmt::Debug for Event {
 pub trait HasEvents {
     fn add_event(&mut self, event: Event) -> ();
     fn events(&self) -> Vec<Event>;
-    fn dates(&self) -> Vec<String>;
-    fn places(&self) -> Vec<String>;
+    fn dates(&self) -> Vec<String> {
+        let mut dates: Vec<String> = Vec::new();
+        for event in self.events() {
+            if let Some(d) = &event.date {
+                dates.push(d.clone());
+            }
+        }
+        dates
+    }
+    fn places(&self) -> Vec<String> {
+        let mut places: Vec<String> = Vec::new();
+        for event in self.events() {
+            if let Some(p) = &event.place {
+                places.push(p.clone());
+            }
+        }
+        places
+    }
 }

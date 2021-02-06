@@ -61,22 +61,4 @@ impl HasEvents for Family {
     fn events(&self) -> Vec<Event> {
         self.events.clone()
     }
-    fn dates(&self) -> Vec<String> {
-        let mut dates: Vec<String> = Vec::new();
-        for event in &self.events {
-            if let Some(d) = &event.date {
-                dates.push(d.clone());
-            }
-        }
-        dates
-    }
-    fn places(&self) -> Vec<String> {
-        let mut places: Vec<String> = Vec::new();
-        for event in &self.events {
-            if let Some(p) = &event.place {
-                places.push(p.clone());
-            }
-        }
-        places
-    }
 }

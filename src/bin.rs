@@ -25,7 +25,7 @@ fn main() {
         data = parser.parse_record();
 
         println!("Parsing complete!");
-        println!("\n\n{:#?}", data);
+        // println!("\n\n{:#?}", data);
         data.stats();
     } else {
         exit_with_error(&format!("File '{}' not found.", filename));
