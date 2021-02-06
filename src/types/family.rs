@@ -1,4 +1,4 @@
-use crate::types::Event;
+use crate::types::{event::HasEvents, Event};
 
 type Xref = String;
 
@@ -46,8 +46,10 @@ impl Family {
     pub fn add_child(&mut self, xref: Xref) {
         self.children.push(xref);
     }
+}
 
-    pub fn add_event(&mut self, event: Event) {
+impl HasEvents for Family {
+    fn add_event(&mut self, event: Event) -> () {
         let event_type = &event.event;
         for e in &self.events {
             if &e.event == event_type {
@@ -56,9 +58,25 @@ impl Family {
         }
         self.events.push(event);
     }
-
-    #[must_use]
-    pub fn get_events(&self) -> Vec<Event> {
+    fn events(&self) -> Vec<Event> {
         self.events.clone()
+    }
+    fn dates(&self) -> Vec<String> {
+        let mut dates: Vec<String> = Vec::new();
+        for event in &self.events {
+            if let Some(d) = &event.date {
+                dates.push(d.clone());
+            }
+        }
+        dates
+    }
+    fn places(&self) -> Vec<String> {
+        let mut places: Vec<String> = Vec::new();
+        for event in &self.events {
+            if let Some(p) = &event.place {
+                places.push(p.clone());
+            }
+        }
+        places
     }
 }

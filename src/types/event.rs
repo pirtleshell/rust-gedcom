@@ -86,6 +86,7 @@ impl std::fmt::Debug for Event {
     }
 }
 
+/// Trait given to structs representing entities that have events.
 pub trait HasEvents {
     fn add_event(&mut self, event: Event) -> ();
     fn events(&self) -> Vec<Event>;
