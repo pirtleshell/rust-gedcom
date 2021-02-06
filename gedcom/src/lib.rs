@@ -17,6 +17,9 @@ gedcom_data.stats();
 #![deny(clippy::pedantic)]
 #![warn(missing_docs)]
 
+
+#[macro_use]
+extern crate gedcom_derive;
 #[macro_use]
 mod util;
 

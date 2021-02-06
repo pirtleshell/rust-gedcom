@@ -1,4 +1,4 @@
-use crate::types::Event;
+use crate::types::{event::HasEvents, Event};
 
 type Xref = String;
 
@@ -6,7 +6,7 @@ type Xref = String;
 ///
 /// This data representation understands that HUSB & WIFE are just poorly-named
 /// pointers to individals. no gender "validating" is done on parse.
-#[derive(Debug)]
+#[derive(Debug, HasEvents)]
 pub struct Family {
     pub xref: Option<Xref>,
     pub individual1: Option<Xref>, // mapped from HUSB
@@ -55,10 +55,5 @@ impl Family {
             }
         }
         self.events.push(event);
-    }
-
-    #[must_use]
-    pub fn get_events(&self) -> Vec<Event> {
-        self.events.clone()
     }
 }

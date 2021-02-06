@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
     use gedcom::parser::Parser;
+    use gedcom::types::event::HasEvents;
     use std::path::PathBuf;
 
     fn read_relative(path: &str) -> String {
@@ -50,7 +51,7 @@ mod tests {
         );
 
         // events
-        let events = data.families[0].get_events();
+        let events = data.families[0].events();
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].event.to_string(), "Marriage");
         assert_eq!(events[0].date.as_ref().unwrap(), "1 APR 1950");
