@@ -4,8 +4,8 @@ use std::{panic, str::Chars};
 use crate::tokenizer::{Token, Tokenizer};
 use crate::tree::GedcomData;
 use crate::types::{
-    Address, CustomData, Event, Family, FamilyLink, Gender, Header, Individual, Name, RepoCitation,
-    Repository, Source, SourceCitation, Submitter,
+    event::HasEvents, Address, CustomData, Event, Family, FamilyLink, Gender, Header, Individual,
+    Name, RepoCitation, Repository, Source, SourceCitation, Submitter,
 };
 
 /// The Gedcom parser that converts the token list into a data structure

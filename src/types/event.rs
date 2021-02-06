@@ -54,7 +54,7 @@ impl Event {
             "ADOP" => EventType::Adoption,
             "BIRT" => EventType::Birth,
             "BURI" => EventType::Burial,
-            "CHR"  => EventType::Christening,
+            "CHR" => EventType::Christening,
             "DEAT" => EventType::Death,
             "MARR" => EventType::Marriage,
             "RESI" => EventType::Residence,
@@ -84,4 +84,11 @@ impl std::fmt::Debug for Event {
 
         debug.finish()
     }
+}
+
+pub trait HasEvents {
+    fn add_event(&mut self, event: Event) -> ();
+    fn events(&self) -> Vec<Event>;
+    fn dates(&self) -> Vec<String>;
+    fn places(&self) -> Vec<String>;
 }

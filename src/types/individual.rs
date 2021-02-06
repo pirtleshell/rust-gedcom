@@ -1,4 +1,4 @@
-use crate::types::{Event, CustomData};
+use crate::types::{event::HasEvents, CustomData, Event};
 
 type Xref = String;
 
@@ -8,10 +8,10 @@ pub struct Individual {
     pub xref: Option<Xref>,
     pub name: Option<Name>,
     pub sex: Gender,
-    pub events: Vec<Event>,
     pub families: Vec<FamilyLink>,
     pub custom_data: Vec<CustomData>,
     pub last_updated: Option<String>,
+    events: Vec<Event>,
 }
 
 impl Individual {
@@ -41,12 +41,35 @@ impl Individual {
         }
     }
 
-    pub fn add_event(&mut self, event: Event) {
-        self.events.push(event);
-    }
-
     pub fn add_custom_data(&mut self, data: CustomData) {
         self.custom_data.push(data)
+    }
+}
+
+impl HasEvents for Individual {
+    fn add_event(&mut self, event: Event) -> () {
+        self.events.push(event);
+    }
+    fn events(&self) -> Vec<Event> {
+        self.events.clone()
+    }
+    fn dates(&self) -> Vec<String> {
+        let mut dates: Vec<String> = Vec::new();
+        for event in &self.events {
+            if let Some(d) = &event.date {
+                dates.push(d.clone());
+            }
+        }
+        dates
+    }
+    fn places(&self) -> Vec<String> {
+        let mut places: Vec<String> = Vec::new();
+        for event in &self.events {
+            if let Some(p) = &event.place {
+                places.push(p.clone());
+            }
+        }
+        places
     }
 }
 

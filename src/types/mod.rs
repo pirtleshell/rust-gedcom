@@ -4,8 +4,9 @@
 
 #![allow(missing_docs)]
 
-mod event;
-pub use event::*;
+pub mod event;
+pub use event::{Event, EventType};
+
 mod address;
 pub use address::*;
 
