@@ -40,6 +40,18 @@ parse_gedcom ./tests/fixtures/sample.ged
 
 The second is a library containing the parser.
 
+## JSON Serializing/Deserializing with `serde`
+This crate has an optional feature called `json` that implements `Serialize` & `Deserialize` for the gedcom data structure. This allows you to easily integrate with the web.
+
+For more info about serde, [check them out](https://serde.rs/)!
+
+The feature is not enabled by default. There are zero dependencies if just using the gedcom parsing functionality.
+
+Use the json feature with any version >=0.2.1 by adding the following to your Cargo.toml:
+```toml
+gedcom = { version = "<version>", features = ["json"] }
+```
+
 ## 🚧 Progress 🚧
 
 **Work has begun on a [json serializer for this package](https://github.com/r/pirtleshell/gedcom_json.git).**
