@@ -54,8 +54,6 @@ gedcom = { version = "<version>", features = ["json"] }
 
 ## 🚧 Progress 🚧
 
-**Work has begun on a [json serializer for this package](https://github.com/r/pirtleshell/gedcom_json.git).**
-
 There are still parts of the specification not yet implemented and the project is subject to change. The way I have been developing is to take a gedcom file, attempt to parse it and act on whatever errors or omissions occur. In it's current state, it is capable of parsing the [sample.ged](tests/fixtures/sample.ged) in its entirety.
 
 Here are some notes about parsed data & tags. Page references are to the [Gedcom 5.5.1 specification](https://edge.fscdn.org/assets/img/documents/ged551-5bac5e57fe88dd37df0e153d9c515335.pdf).

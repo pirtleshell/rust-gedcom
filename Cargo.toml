@@ -1,6 +1,6 @@
 [package]
 name = "gedcom"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["Robert Pirtle <astropirtle@gmail.com>"]
 description = "A parser for GEDCOM files"
 keywords = ["genealogy", "gedcom", "parser", "gedcom-parser", "family-trees"]
@@ -15,7 +15,6 @@ default = []
 json = ["serde", "serde_json"]
 
 [dependencies]
-
 serde = { version = "1.0", features = [ "derive" ], optional = true }
 serde_json = { version = "1.0", optional = true }
 
