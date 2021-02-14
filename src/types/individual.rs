@@ -1,9 +1,12 @@
 use crate::types::{event::HasEvents, CustomData, Event};
+#[cfg(feature = "json")]
+use serde::{Deserialize, Serialize};
 
 type Xref = String;
 
 /// A Person within the family tree
 #[derive(Debug)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct Individual {
     pub xref: Option<Xref>,
     pub name: Option<Name>,
@@ -57,6 +60,7 @@ impl HasEvents for Individual {
 
 /// Gender of an `Individual`
 #[derive(Debug)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub enum Gender {
     Male,
     Female,
@@ -66,12 +70,14 @@ pub enum Gender {
 }
 
 #[derive(Debug)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 enum FamilyLinkType {
     Spouse,
     Child,
 }
 
 #[derive(Debug)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 enum Pedigree {
     Adopted,
     Birth,
@@ -80,6 +86,7 @@ enum Pedigree {
 }
 
 #[derive(Debug)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct FamilyLink(Xref, FamilyLinkType, Option<Pedigree>);
 
 impl FamilyLink {
@@ -104,7 +111,8 @@ impl FamilyLink {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct Name {
     pub value: Option<String>,
     pub given: Option<String>,

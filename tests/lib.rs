@@ -1,14 +1,18 @@
 #[cfg(test)]
-mod tests {
-    use gedcom::parser::Parser;
-    use gedcom::types::event::HasEvents;
+pub mod util {
     use std::path::PathBuf;
-
-    fn read_relative(path: &str) -> String {
+    pub fn read_relative(path: &str) -> String {
         let path_buf: PathBuf = PathBuf::from(path);
         let absolute_path: PathBuf = std::fs::canonicalize(path_buf).unwrap();
         std::fs::read_to_string(absolute_path).unwrap()
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::util::read_relative;
+    use gedcom::parser::Parser;
+    use gedcom::types::event::HasEvents;
 
     #[test]
     fn parses_basic_gedcom() {

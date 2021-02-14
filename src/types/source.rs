@@ -1,6 +1,9 @@
 use crate::types::{Event, RepoCitation};
+#[cfg(feature = "json")]
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 /// Source for genealogy facts
 pub struct Source {
     pub xref: Option<String>,
@@ -32,6 +35,7 @@ impl Source {
 
 #[allow(clippy::module_name_repetitions)]
 #[derive(Debug)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct SourceData {
     events: Vec<Event>,
     pub agency: Option<String>,

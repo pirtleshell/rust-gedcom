@@ -1,6 +1,9 @@
 use crate::types::{Family, Header, Individual, Media, Repository, Source, Submitter};
+#[cfg(feature = "json")]
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Default)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 /// The data structure representing all the data within a gedcom file
 pub struct GedcomData {
     /// Header containing file metadata

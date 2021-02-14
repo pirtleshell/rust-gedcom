@@ -1,9 +1,12 @@
 use crate::types::Address;
+#[cfg(feature = "json")]
+use serde::{Deserialize, Serialize};
 
 type Xref = String;
 
 /// Submitter of the data, ie. who reported the genealogy fact
 #[derive(Debug)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct Submitter {
     /// Optional reference to link to this submitter
     pub xref: Option<Xref>,

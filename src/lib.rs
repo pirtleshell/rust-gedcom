@@ -20,6 +20,9 @@ gedcom_data.stats();
 #[macro_use]
 mod util;
 
+// #[cfg(feature = "json")]
+// extern crate serde;
+
 pub mod parser;
 pub mod tokenizer;
 pub mod types;
