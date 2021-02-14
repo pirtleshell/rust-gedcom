@@ -12,6 +12,8 @@ let gedcom_data = parser.parse_record();
 // output some stats on the gedcom contents
 gedcom_data.stats();
 ```
+
+This crate contains an optional `"json"` feature that implements serialization & deserialization to json with [`serde`](https://serde.rs).
 */
 
 #![deny(clippy::pedantic)]

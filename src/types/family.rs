@@ -1,12 +1,15 @@
 use crate::types::{event::HasEvents, Event};
+#[cfg(feature = "json")]
+use serde::{Deserialize, Serialize};
 
 type Xref = String;
 
 /// Family fact, representing a relationship between `Individual`s
 ///
 /// This data representation understands that HUSB & WIFE are just poorly-named
-/// pointers to individals. no gender "validating" is done on parse.
+/// pointers to individuals. no gender "validating" is done on parse.
 #[derive(Debug)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct Family {
     pub xref: Option<Xref>,
     pub individual1: Option<Xref>, // mapped from HUSB

@@ -4,6 +4,9 @@
 
 #![allow(missing_docs)]
 
+#[cfg(feature = "json")]
+use serde::{Deserialize, Serialize};
+
 pub mod event;
 pub use event::{Event, EventType};
 
@@ -31,10 +34,12 @@ pub use source::*;
 // TODO
 /// Multimedia item
 #[derive(Debug)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct Media {}
 
 /// Data repository, the `REPO` tag
 #[derive(Debug)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct Repository {
     /// Optional reference to link to this repo
     pub xref: Option<Xref>,
@@ -46,6 +51,7 @@ pub struct Repository {
 
 /// Citation linking a genealogy fact to a data `Source`
 #[derive(Clone, Debug)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct SourceCitation {
     /// Reference to the `Source`
     pub xref: Xref,
@@ -55,6 +61,7 @@ pub struct SourceCitation {
 
 /// Citation linking a `Source` to a data `Repository`
 #[derive(Debug)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct RepoCitation {
     /// Reference to the `Repository`
     pub xref: Xref,
@@ -63,6 +70,7 @@ pub struct RepoCitation {
 }
 
 #[derive(Debug)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct CustomData {
     pub tag: String,
     pub value: String,

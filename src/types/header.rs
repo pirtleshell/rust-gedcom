@@ -1,6 +1,9 @@
 use crate::types::Source;
+#[cfg(feature = "json")]
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Default)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 /// Header containing GEDCOM metadata
 pub struct Header {
     pub encoding: Option<String>,
