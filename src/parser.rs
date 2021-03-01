@@ -48,7 +48,9 @@ impl<'a> Parser<'a> {
             if let Token::Tag(tag) = &self.tokenizer.current_token {
                 match tag.as_str() {
                     "HEAD" => data.header = Header::parse(self, 0).unwrap(),
-                    "FAM" => data.add_family(self.parse_family(level, pointer)),
+                    "FAM" => {
+                        data.add_family(Family::parse(self, level).unwrap().with_xref(pointer))
+                    }
                     "INDI" => data.add_individual(self.parse_individual(level, pointer)),
                     "REPO" => data.add_repository(self.parse_repository(level, pointer)),
                     "SOUR" => data.add_source(self.parse_source(level, pointer)),
@@ -153,30 +155,6 @@ impl<'a> Parser<'a> {
         }
         // println!("found individual:\n{:#?}", individual);
         individual
-    }
-
-    /// Parses FAM top-level tag
-    fn parse_family(&mut self, level: u8, xref: Option<String>) -> Family {
-        // skip over FAM tag name
-        self.tokenizer.next_token();
-        let mut family = Family::new(xref);
-
-        while self.tokenizer.current_token != Token::Level(level) {
-            match &self.tokenizer.current_token {
-                Token::Tag(tag) => match tag.as_str() {
-                    "MARR" => family.add_event(self.parse_event(level + 1)),
-                    "HUSB" => family.set_individual1(self.take_line_value()),
-                    "WIFE" => family.set_individual2(self.take_line_value()),
-                    "CHIL" => family.add_child(self.take_line_value()),
-                    _ => panic!("{} Unhandled Family Tag: {}", self.dbg(), tag),
-                },
-                Token::Level(_) => self.tokenizer.next_token(),
-                _ => panic!("Unhandled Family Token: {:?}", self.tokenizer.current_token),
-            }
-        }
-
-        // println!("found family:\n{:#?}", family);
-        family
     }
 
     fn parse_source(&mut self, level: u8, xref: Option<String>) -> Source {

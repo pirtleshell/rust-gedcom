@@ -1,9 +1,9 @@
+use crate::parser::{Parsable, Parser, ParsingError};
+use crate::tokenizer::Token;
+
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
 use std::fmt;
-
-use crate::parser::{Parsable, Parser, ParsingError};
-use crate::tokenizer::Token;
 
 /// Physical address at which a fact occurs
 #[derive(Default, Debug)]
