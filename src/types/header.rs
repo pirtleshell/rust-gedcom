@@ -1,4 +1,7 @@
+use crate::parser::{Parsable, Parser, ParsingError};
+use crate::tokenizer::Token;
 use crate::types::Source;
+
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
 
@@ -35,3 +38,63 @@ impl Header {
 //     name: Option<String>,
 //     coroporation:
 // }
+
+impl Parsable<Header> for Header {
+    /// Parses HEAD top-level tag
+    fn parse(parser: &mut Parser, level: u8) -> Result<Header, ParsingError> {
+        // skip over HEAD tag name
+        parser.tokenizer.next_token();
+
+        let mut header = Header::default();
+
+        // just skipping the header for now
+        while parser.tokenizer.current_token != Token::Level(level) {
+            match &parser.tokenizer.current_token {
+                Token::Tag(tag) => match tag.as_str() {
+                    // TODO: CHAR.VERS - version
+                    "CHAR" => header.encoding = Some(parser.take_line_value()),
+                    "CORP" => header.corporation = Some(parser.take_line_value()),
+                    "COPR" => header.copyright = Some(parser.take_line_value()),
+                    "DATE" => header.date = Some(parser.take_line_value()),
+                    "DEST" => header.add_destination(parser.take_line_value()),
+                    "LANG" => header.language = Some(parser.take_line_value()),
+                    "FILE" => header.filename = Some(parser.take_line_value()),
+                    "NOTE" => header.note = Some(parser.take_continued_text(1)),
+                    "SUBM" => header.submitter_tag = Some(parser.take_line_value()),
+                    "SUBN" => header.submission_tag = Some(parser.take_line_value()),
+                    "TIME" => {
+                        let time = parser.take_line_value();
+                        // assuming subtag of DATE
+                        if let Some(date) = header.date {
+                            let mut datetime = String::new();
+                            datetime.push_str(&date);
+                            datetime.push_str(" ");
+                            datetime.push_str(&time);
+                            header.date = Some(datetime);
+                        } else {
+                            panic!("Expected TIME to be under DATE in header.");
+                        }
+                    }
+                    "GEDC" => {
+                        header = parser.parse_gedcom_data(header);
+                    }
+                    // TODO: HeaderSource
+                    "SOUR" => {
+                        println!("WARNING: Skipping header source.");
+                        while parser.tokenizer.current_token != Token::Level(1) {
+                            parser.tokenizer.next_token();
+                        }
+                    }
+                    _ => panic!("{} Unhandled Header Tag: {}", parser.dbg(), tag),
+                },
+                Token::Level(_) => parser.tokenizer.next_token(),
+                _ => panic!(
+                    "Unhandled Header Token: {:?}",
+                    parser.tokenizer.current_token
+                ),
+            }
+        }
+
+        Ok(header)
+    }
+}

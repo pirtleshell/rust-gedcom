@@ -47,7 +47,7 @@ impl<'a> Parser<'a> {
 
             if let Token::Tag(tag) = &self.tokenizer.current_token {
                 match tag.as_str() {
-                    "HEAD" => data.header = self.parse_header(),
+                    "HEAD" => data.header = Header::parse(self, 0).unwrap(),
                     "FAM" => data.add_family(self.parse_family(level, pointer)),
                     "INDI" => data.add_individual(self.parse_individual(level, pointer)),
                     "REPO" => data.add_repository(self.parse_repository(level, pointer)),
@@ -82,60 +82,6 @@ impl<'a> Parser<'a> {
         }
 
         data
-    }
-
-    /// Parses HEAD top-level tag
-    fn parse_header(&mut self) -> Header {
-        // skip over HEAD tag name
-        self.tokenizer.next_token();
-
-        let mut header = Header::default();
-
-        // just skipping the header for now
-        while self.tokenizer.current_token != Token::Level(0) {
-            match &self.tokenizer.current_token {
-                Token::Tag(tag) => match tag.as_str() {
-                    // TODO: CHAR.VERS
-                    "CHAR" => header.encoding = Some(self.take_line_value()),
-                    "CORP" => header.corporation = Some(self.take_line_value()),
-                    "COPR" => header.copyright = Some(self.take_line_value()),
-                    "DATE" => header.date = Some(self.take_line_value()),
-                    "DEST" => header.add_destination(self.take_line_value()),
-                    "LANG" => header.language = Some(self.take_line_value()),
-                    "FILE" => header.filename = Some(self.take_line_value()),
-                    "NOTE" => header.note = Some(self.take_continued_text(1)),
-                    "SUBM" => header.submitter_tag = Some(self.take_line_value()),
-                    "SUBN" => header.submission_tag = Some(self.take_line_value()),
-                    "TIME" => {
-                        let time = self.take_line_value();
-                        // assuming subtag of DATE
-                        if let Some(date) = header.date {
-                            let mut datetime = String::new();
-                            datetime.push_str(&date);
-                            datetime.push_str(" ");
-                            datetime.push_str(&time);
-                            header.date = Some(datetime);
-                        } else {
-                            panic!("Expected TIME to be under DATE in header.");
-                        }
-                    }
-                    "GEDC" => {
-                        header = self.parse_gedcom_data(header);
-                    }
-                    // TODO: HeaderSource
-                    "SOUR" => {
-                        println!("WARNING: Skipping header source.");
-                        while self.tokenizer.current_token != Token::Level(1) {
-                            self.tokenizer.next_token();
-                        }
-                    }
-                    _ => panic!("{} Unhandled Header Tag: {}", self.dbg(), tag),
-                },
-                Token::Level(_) => self.tokenizer.next_token(),
-                _ => panic!("Unhandled Header Token: {:?}", self.tokenizer.current_token),
-            }
-        }
-        header
     }
 
     /// Parses SUBM top-level tag
@@ -307,7 +253,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Handle parsing GEDC tag
-    fn parse_gedcom_data(&mut self, mut header: Header) -> Header {
+    pub(crate) fn parse_gedcom_data(&mut self, mut header: Header) -> Header {
         // skip GEDC tag
         self.tokenizer.next_token();
 
@@ -482,7 +428,7 @@ impl<'a> Parser<'a> {
 
     /// Takes the value of the current line including handling
     /// multi-line values from CONT & CONC tags.
-    fn take_continued_text(&mut self, level: u8) -> String {
+    pub(crate) fn take_continued_text(&mut self, level: u8) -> String {
         let mut value = self.take_line_value();
 
         loop {
