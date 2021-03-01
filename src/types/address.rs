@@ -2,8 +2,11 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+use crate::parser::{Parsable, Parser, ParsingError};
+use crate::tokenizer::Token;
+
 /// Physical address at which a fact occurs
-#[derive(Default)]
+#[derive(Default, Debug)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct Address {
     pub value: Option<String>,
@@ -16,7 +19,7 @@ pub struct Address {
     pub country: Option<String>,
 }
 
-impl fmt::Debug for Address {
+impl fmt::Display for Address {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut debug = f.debug_struct("Address");
 
@@ -30,5 +33,58 @@ impl fmt::Debug for Address {
         fmt_optional_value!(debug, "country", &self.country);
 
         debug.finish()
+    }
+}
+
+impl Parsable<Address> for Address {
+    fn parse(parser: &mut Parser, level: u8) -> Result<Address, ParsingError> {
+        // skip ADDR tag
+        if let Token::Tag(_) = &parser.tokenizer.current_token {
+            parser.tokenizer.next_token();
+        }
+
+        let mut address = Address::default();
+        let mut value = String::new();
+
+        // handle value on ADDR line
+        if let Token::LineValue(addr) = &parser.tokenizer.current_token {
+            value.push_str(addr);
+            parser.tokenizer.next_token();
+        }
+
+        loop {
+            if let Token::Level(cur_level) = parser.tokenizer.current_token {
+                if cur_level <= level {
+                    break;
+                }
+            }
+            match &parser.tokenizer.current_token {
+                Token::Tag(tag) => match tag.as_str() {
+                    "CONT" => {
+                        value.push('\n');
+                        value.push_str(&parser.take_line_value());
+                    }
+                    "ADR1" => address.adr1 = Some(parser.take_line_value()),
+                    "ADR2" => address.adr2 = Some(parser.take_line_value()),
+                    "ADR3" => address.adr3 = Some(parser.take_line_value()),
+                    "CITY" => address.city = Some(parser.take_line_value()),
+                    "STAE" => address.state = Some(parser.take_line_value()),
+                    "POST" => address.post = Some(parser.take_line_value()),
+                    "CTRY" => address.country = Some(parser.take_line_value()),
+                    // TODO ParsingError
+                    _ => panic!("{} Unhandled Address Tag: {}", parser.dbg(), tag),
+                },
+                Token::Level(_) => parser.tokenizer.next_token(),
+                _ => panic!(
+                    "Unhandled Address Token: {:?}",
+                    parser.tokenizer.current_token
+                ),
+            }
+        }
+
+        if &value != "" {
+            address.value = Some(value);
+        }
+        Ok(address)
     }
 }

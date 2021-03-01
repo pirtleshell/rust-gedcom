@@ -1,8 +1,8 @@
 //! The state machine that parses a char iterator of the gedcom's contents
-use std::{panic, str::Chars};
+use std::{error::Error, fmt, panic, str::Chars};
 
 use crate::tokenizer::{Token, Tokenizer};
-use crate::tree::GedcomData;
+use crate::tree::Gedcom;
 use crate::types::{
     event::HasEvents, Address, CustomData, Event, Family, FamilyLink, Gender, Header, Individual,
     Name, RepoCitation, Repository, Source, SourceCitation, Submitter,
@@ -10,8 +10,10 @@ use crate::types::{
 
 /// The Gedcom parser that converts the token list into a data structure
 pub struct Parser<'a> {
-    tokenizer: Tokenizer<'a>,
+    pub(crate) tokenizer: Tokenizer<'a>,
 }
+
+// TODO: expose useful helpers without publicizing tokenizer
 
 impl<'a> Parser<'a> {
     /// Creates a parser state machine for parsing a gedcom file as a chars iterator
@@ -23,8 +25,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Does the actual parsing of the record.
-    pub fn parse_record(&mut self) -> GedcomData {
-        let mut data = GedcomData::default();
+    pub fn parse_record(&mut self) -> Gedcom {
+        let mut data = Gedcom::default();
         loop {
             let level = match self.tokenizer.current_token {
                 Token::Level(n) => n,
@@ -461,51 +463,10 @@ impl<'a> Parser<'a> {
 
     /// Parses ADDR tag
     fn parse_address(&mut self, level: u8) -> Address {
-        // skip ADDR tag
-        self.tokenizer.next_token();
-        let mut address = Address::default();
-        let mut value = String::new();
-
-        // handle value on ADDR line
-        if let Token::LineValue(addr) = &self.tokenizer.current_token {
-            value.push_str(addr);
-            self.tokenizer.next_token();
+        match Address::parse(self, level) {
+            Ok(addr) => addr,
+            Err(e) => panic!("address fail: {:?}", e),
         }
-
-        loop {
-            if let Token::Level(cur_level) = self.tokenizer.current_token {
-                if cur_level <= level {
-                    break;
-                }
-            }
-            match &self.tokenizer.current_token {
-                Token::Tag(tag) => match tag.as_str() {
-                    "CONT" => {
-                        value.push('\n');
-                        value.push_str(&self.take_line_value());
-                    }
-                    "ADR1" => address.adr1 = Some(self.take_line_value()),
-                    "ADR2" => address.adr2 = Some(self.take_line_value()),
-                    "ADR3" => address.adr3 = Some(self.take_line_value()),
-                    "CITY" => address.city = Some(self.take_line_value()),
-                    "STAE" => address.state = Some(self.take_line_value()),
-                    "POST" => address.post = Some(self.take_line_value()),
-                    "CTRY" => address.country = Some(self.take_line_value()),
-                    _ => panic!("{} Unhandled Address Tag: {}", self.dbg(), tag),
-                },
-                Token::Level(_) => self.tokenizer.next_token(),
-                _ => panic!(
-                    "Unhandled Address Token: {:?}",
-                    self.tokenizer.current_token
-                ),
-            }
-        }
-
-        if &value != "" {
-            address.value = Some(value);
-        }
-
-        address
     }
 
     fn parse_citation(&mut self, level: u8) -> SourceCitation {
@@ -569,7 +530,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Grabs and returns to the end of the current line as a String
-    fn take_line_value(&mut self) -> String {
+    pub(crate) fn take_line_value(&mut self) -> String {
         let value: String;
         self.tokenizer.next_token();
 
@@ -587,7 +548,32 @@ impl<'a> Parser<'a> {
     }
 
     /// Debug function displaying GEDCOM line number of error message.
-    fn dbg(&self) -> String {
+    pub(crate) fn dbg(&self) -> String {
         format!("line {}:", self.tokenizer.line)
+    }
+}
+
+/// Trait given to data types that can be parsed into `GedcomData`
+pub trait Parsable<T> {
+    /// Parses an object by iterating through the `parser` until no longer at given
+    /// `level` or deeper.
+    ///
+    /// # Errors
+    /// Raises a `ParsingError` when unhandled or unexpected tokens are found.
+    fn parse(parser: &mut Parser, level: u8) -> Result<T, ParsingError>;
+}
+
+#[derive(Debug)]
+/// Error indicating unhandled or unexpected token encountered.
+pub struct ParsingError {
+    line: usize,
+    token: Token,
+}
+
+impl Error for ParsingError {}
+
+impl fmt::Display for ParsingError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", format!("line: {}\n{:?}", self.line, self.token))
     }
 }

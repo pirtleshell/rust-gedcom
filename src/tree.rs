@@ -24,7 +24,7 @@ pub struct Gedcom {
 
 // should maybe store these by xref if available?
 impl Gedcom {
-    pub(crate) fn add(&mut self, data: Box<dyn GedcomData>) {
+    pub(crate) fn add(&mut self, data: &Box<dyn GedcomData>) {
         match data.get_type() {
             GedcomDataType::Family(family) => self.families.push(family),
             GedcomDataType::Header(header) => self.header = header,
@@ -33,6 +33,7 @@ impl Gedcom {
             GedcomDataType::Repository(repo) => self.repositories.push(repo),
             GedcomDataType::Source(source) => self.sources.push(source),
             GedcomDataType::Submitter(submitter) => self.submitters.push(submitter),
+            GedcomDataType::Other(s) => println!("Unhandled datatype: {}", s),
         }
     }
 
@@ -77,6 +78,7 @@ impl Gedcom {
 }
 
 /// Type of data that can be added to a Gedcom tree.
+#[derive(Debug)]
 pub(crate) enum GedcomDataType {
     Family(Family),
     Header(Header),
@@ -85,6 +87,7 @@ pub(crate) enum GedcomDataType {
     Repository(Repository),
     Source(Source),
     Submitter(Submitter),
+    Other(String),
 }
 
 pub(crate) trait GedcomData {

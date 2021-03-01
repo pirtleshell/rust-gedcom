@@ -27,7 +27,7 @@ pub mod tokenizer;
 pub mod types;
 
 mod tree;
-pub use tree::GedcomData;
+pub use tree::Gedcom as GedcomData;
 
 #[must_use]
 /// Helper function for converting GEDCOM file content stream to parsed data.
