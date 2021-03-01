@@ -179,8 +179,7 @@ impl<'a> Parser<'a> {
                     "ADOP" | "BIRT" | "BAPM" | "BARM" | "BASM" | "BLES" | "BURI" | "CENS"
                     | "CHR" | "CHRA" | "CONF" | "CREM" | "DEAT" | "EMIG" | "FCOM" | "GRAD"
                     | "IMMI" | "NATU" | "ORDN" | "RETI" | "RESI" | "PROB" | "WILL" | "EVEN" => {
-                        let tag_clone = tag.clone();
-                        individual.add_event(self.parse_event(tag_clone.as_str(), level + 1));
+                        individual.add_event(self.parse_event(level + 1));
                     }
                     "FAMC" | "FAMS" => {
                         let tag_clone = tag.clone();
@@ -219,7 +218,7 @@ impl<'a> Parser<'a> {
         while self.tokenizer.current_token != Token::Level(level) {
             match &self.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
-                    "MARR" => family.add_event(self.parse_event("MARR", level + 1)),
+                    "MARR" => family.add_event(self.parse_event(level + 1)),
                     "HUSB" => family.set_individual1(self.take_line_value()),
                     "WIFE" => family.set_individual2(self.take_line_value()),
                     "CHIL" => family.add_child(self.take_line_value()),
@@ -248,12 +247,13 @@ impl<'a> Parser<'a> {
             match &self.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
                     "DATA" => self.tokenizer.next_token(),
-                    "EVEN" => {
-                        let events_recorded = self.take_line_value();
-                        let mut event = self.parse_event("OTHER", level + 2);
-                        event.with_source_data(events_recorded);
-                        source.data.add_event(event);
-                    }
+                    // TODO: fix weird date parsing.
+                    // "EVEN" => {
+                    //     let events_recorded = self.take_line_value();
+                    //     let mut event = self.parse_event(level + 2);
+                    //     event.with_source_data(events_recorded);
+                    //     source.data.add_event(event);
+                    // }
                     "AGNC" => source.data.agency = Some(self.take_line_value()),
                     "ABBR" => source.abbreviation = Some(self.take_continued_text(level + 1)),
                     "TITL" => source.title = Some(self.take_continued_text(level + 1)),
@@ -438,27 +438,11 @@ impl<'a> Parser<'a> {
         name
     }
 
-    fn parse_event(&mut self, tag: &str, level: u8) -> Event {
-        self.tokenizer.next_token();
-        let mut event = Event::from_tag(tag);
-        loop {
-            if let Token::Level(cur_level) = self.tokenizer.current_token {
-                if cur_level <= level {
-                    break;
-                }
-            }
-            match &self.tokenizer.current_token {
-                Token::Tag(tag) => match tag.as_str() {
-                    "DATE" => event.date = Some(self.take_line_value()),
-                    "PLAC" => event.place = Some(self.take_line_value()),
-                    "SOUR" => event.add_citation(self.parse_citation(level + 1)),
-                    _ => panic!("{} Unhandled Event Tag: {}", self.dbg(), tag),
-                },
-                Token::Level(_) => self.tokenizer.next_token(),
-                _ => panic!("Unhandled Event Token: {:?}", self.tokenizer.current_token),
-            }
+    fn parse_event(&mut self, level: u8) -> Event {
+        match Event::parse(self, level) {
+            Ok(event) => event,
+            Err(e) => panic!("event parsing fail: {:?}", e),
         }
-        event
     }
 
     /// Parses ADDR tag
@@ -469,7 +453,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_citation(&mut self, level: u8) -> SourceCitation {
+    // TODO Citation::parse
+    pub(crate) fn parse_citation(&mut self, level: u8) -> SourceCitation {
         let mut citation = SourceCitation {
             xref: self.take_line_value(),
             page: None,

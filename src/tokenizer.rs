@@ -5,7 +5,7 @@ use std::str::Chars;
 ///
 /// making use of [GEDCOM Standard Release 5.5.1](https://edge.fscdn.org/assets/img/documents/ged551-5bac5e57fe88dd37df0e153d9c515335.pdf), p.11
 /// `gedcom_line: level + delim + [optional_xref_ID] + tag + [optional_line_value] + terminator`
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Token {
     /// The `level`, denoting the depth within the tree
     Level(u8),
@@ -98,6 +98,13 @@ impl<'a> Tokenizer<'a> {
                 self.line, self.current_token
             ),
         };
+    }
+
+    /// Like `next_token`, but returns a clone of the token you are popping.
+    pub fn take_token(&mut self) -> Token {
+        let current_token = self.current_token.clone();
+        self.next_token();
+        return current_token;
     }
 
     fn next_char(&mut self) {

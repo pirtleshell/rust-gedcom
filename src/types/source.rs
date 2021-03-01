@@ -1,4 +1,5 @@
 use crate::types::{Event, RepoCitation};
+
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
 

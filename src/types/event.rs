@@ -1,4 +1,7 @@
+use crate::parser::{Parsable, Parser, ParsingError};
+use crate::tokenizer::Token;
 use crate::types::SourceCitation;
+
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
 use std::{fmt, string::ToString};
@@ -63,7 +66,10 @@ impl Event {
             "MARR" => EventType::Marriage,
             "RESI" => EventType::Residence,
             "OTHER" => EventType::Other,
-            _ => panic!("Unrecognized event tag: {}", tag),
+            _ => {
+                println!("Unrecognized event tag: {}", tag);
+                EventType::Other
+            }
         };
         Event::new(etype)
     }
@@ -75,6 +81,47 @@ impl Event {
     #[must_use]
     pub fn get_citations(&self) -> Vec<SourceCitation> {
         self.citations.clone()
+    }
+}
+
+impl Parsable<Event> for Event {
+    fn parse(parser: &mut Parser, level: u8) -> Result<Event, ParsingError> {
+        // extract current tag name to determine event type.
+        let event_tag_token = parser.tokenizer.take_token();
+        let tag: &str = if let Token::Tag(t) = &event_tag_token {
+            t.as_str().clone()
+        } else {
+            panic!(
+                "Expected event tag, found {:?}",
+                &parser.tokenizer.current_token
+            );
+        };
+
+        let mut event = Event::from_tag(tag);
+        loop {
+            if let Token::Level(cur_level) = parser.tokenizer.current_token {
+                if cur_level <= level {
+                    break;
+                }
+            }
+            match &parser.tokenizer.current_token {
+                Token::Tag(tag) => match tag.as_str() {
+                    "DATE" => event.date = Some(parser.take_line_value()),
+                    "PLAC" => event.place = Some(parser.take_line_value()),
+                    // TODO Citation::parse
+                    "SOUR" => event.add_citation(parser.parse_citation(level + 1)),
+                    _ => panic!("{} Unhandled Event Tag: {}", parser.dbg(), tag),
+                },
+                Token::Level(_) => {
+                    parser.tokenizer.next_token();
+                }
+                _ => panic!(
+                    "Unhandled Event Token: {:?}",
+                    parser.tokenizer.current_token
+                ),
+            }
+        }
+        Ok(event)
     }
 }
 
