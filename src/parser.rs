@@ -191,7 +191,7 @@ impl<'a> Parser<'a> {
                         self.tokenizer.next_token(); // DATE tag
                         individual.last_updated = Some(self.take_line_value());
                     }
-                    _ => panic!("{} Unhandled Individual Tag: {}", self.dbg(), tag),
+                    _ => self.handle_unknown_tag(level + 1, "Individual"),
                 },
                 Token::CustomTag(tag) => {
                     let tag_clone = tag.clone();
@@ -408,10 +408,11 @@ impl<'a> Parser<'a> {
     fn parse_name(&mut self, level: u8) -> Name {
         let mut name = Name::default();
         name.value = Some(self.take_line_value());
+        let mut cur_level = level;
 
         loop {
-            if let Token::Level(cur_level) = self.tokenizer.current_token {
-                if cur_level <= level {
+            if let Token::Level(new_level) = self.tokenizer.current_token {
+                if new_level <= cur_level {
                     break;
                 }
             }
@@ -422,9 +423,12 @@ impl<'a> Parser<'a> {
                     "NSFX" => name.suffix = Some(self.take_line_value()),
                     "SPFX" => name.surname_prefix = Some(self.take_line_value()),
                     "SURN" => name.surname = Some(self.take_line_value()),
-                    _ => panic!("{} Unhandled Name Tag: {}", self.dbg(), tag),
+                    _ => self.handle_unknown_tag(cur_level, "Name"),
                 },
-                Token::Level(_) => self.tokenizer.next_token(),
+                Token::Level(_) => {
+                    cur_level += 1;
+                    self.tokenizer.next_token()
+                }
                 _ => panic!("Unhandled Name Token: {:?}", self.tokenizer.current_token),
             }
         }
@@ -446,7 +450,7 @@ impl<'a> Parser<'a> {
                     "DATE" => event.date = Some(self.take_line_value()),
                     "PLAC" => event.place = Some(self.take_line_value()),
                     "SOUR" => event.add_citation(self.parse_citation(level + 1)),
-                    _ => panic!("{} Unhandled Event Tag: {}", self.dbg(), tag),
+                    _ => self.handle_unknown_tag(level + 1, "Event"),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
                 _ => panic!("Unhandled Event Token: {:?}", self.tokenizer.current_token),
@@ -518,13 +522,10 @@ impl<'a> Parser<'a> {
             match &self.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
                     "PAGE" => citation.page = Some(self.take_line_value()),
-                    _ => panic!("{} Unhandled Citation Tag: {}", self.dbg(), tag),
+                    _ => self.handle_unknown_tag(level + 1, "Citation"),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
-                _ => panic!(
-                    "Unhandled Citation Token: {:?}",
-                    self.tokenizer.current_token
-                ),
+                _ => self.handle_unexpected_token(level + 1, "Citation"),
             }
         }
         citation
@@ -582,10 +583,22 @@ impl<'a> Parser<'a> {
         value
     }
 
+    fn handle_unknown_tag(&mut self, level: u8, parent_name: &str) {
+        if let Token::Tag(tag) = &self.tokenizer.current_token {
+            println!(
+                "{} Unhandled {} Tag: {}",
+                self.dbg_lvl(level),
+                parent_name,
+                tag
+            );
+        }
+        self.skip_block(level);
+    }
+
     fn handle_unexpected_token(&mut self, level: u8, base_tag: &str) {
         println!(
-            "{} Unexpected {} Token: {:?}",
-            self.dbg(),
+            "{} Unhandled {} Token: {:?}",
+            self.dbg_lvl(level),
             base_tag,
             &self.tokenizer.current_token
         );
@@ -601,6 +614,10 @@ impl<'a> Parser<'a> {
             }
             self.tokenizer.next_token();
         }
+    }
+
+    fn dbg_lvl(&self, level: u8) -> String {
+        format!("line {}, level {}:", self.tokenizer.line, level)
     }
 
     /// Debug function displaying GEDCOM line number of error message.
