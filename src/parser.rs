@@ -130,7 +130,7 @@ impl<'a> Parser<'a> {
                     _ => panic!("{} Unhandled Header Tag: {}", self.dbg(), tag),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
-                _ => panic!("Unhandled Header Token: {:?}", self.tokenizer.current_token),
+                _ => self.handle_unexpected_token(1, "HEAD"),
             }
         }
         header
@@ -325,11 +325,7 @@ impl<'a> Parser<'a> {
                     _ => panic!("{} Unhandled GEDC Tag: {}", self.dbg(), tag),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
-                _ => panic!(
-                    "{} Unexpected GEDC Token: {:?}",
-                    self.dbg(),
-                    &self.tokenizer.current_token
-                ),
+                _ => self.handle_unexpected_token(2, "GEDC"),
             }
         }
         header
@@ -584,6 +580,27 @@ impl<'a> Parser<'a> {
         }
         self.tokenizer.next_token();
         value
+    }
+
+    fn handle_unexpected_token(&mut self, level: u8, base_tag: &str) {
+        println!(
+            "{} Unexpected {} Token: {:?}",
+            self.dbg(),
+            base_tag,
+            &self.tokenizer.current_token
+        );
+        self.skip_block(level);
+    }
+
+    fn skip_block(&mut self, level: u8) {
+        loop {
+            if let Token::Level(cur_level) = self.tokenizer.current_token {
+                if cur_level <= level {
+                    break;
+                }
+            }
+            self.tokenizer.next_token();
+        }
     }
 
     /// Debug function displaying GEDCOM line number of error message.
