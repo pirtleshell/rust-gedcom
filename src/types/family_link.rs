@@ -49,7 +49,8 @@ impl FamilyLink {
 }
 
 impl Parsable<FamilyLink> for FamilyLink {
-    fn parse(parser: &mut Parser, level: u8) -> Result<FamilyLink, ParsingError> {
+    fn parse(parser: &mut Parser) -> Result<FamilyLink, ParsingError> {
+        let base_lvl = parser.level;
         let tag = parser.take_tag();
         let relation = match tag {
             "FAMC" => Relation::Child,
@@ -60,17 +61,17 @@ impl Parsable<FamilyLink> for FamilyLink {
 
         loop {
             if let Token::Level(cur_level) = parser.tokenizer.current_token {
-                if cur_level <= level {
+                if cur_level <= base_lvl {
                     break;
                 }
             }
             match &parser.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
                     "PEDI" => link.set_pedigree(parser.take_line_value().as_str()),
-                    _ => parser.skip_current_tag(level + 1, "FamilyLink"),
+                    _ => parser.skip_current_tag(parser.level, "FamilyLink"),
                 },
-                Token::Level(_) => parser.tokenizer.next_token(),
-                _ => parser.handle_unexpected_token(level + 1, "FamilyLink"),
+                Token::Level(_) => parser.set_level(),
+                _ => parser.handle_unexpected_token(parser.level, "FamilyLink"),
             }
         }
 

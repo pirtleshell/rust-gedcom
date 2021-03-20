@@ -61,22 +61,23 @@ impl HasEvents for Family {
 
 impl Parsable<Family> for Family {
     /// Parses FAM top-level tag
-    fn parse(parser: &mut Parser, level: u8) -> Result<Family, ParsingError> {
+    fn parse(parser: &mut Parser) -> Result<Family, ParsingError> {
+        let base_lvl = parser.level;
         // skip over FAM tag name
         parser.tokenizer.next_token();
         let mut family = Family::default();
 
-        while parser.tokenizer.current_token != Token::Level(level) {
+        while parser.tokenizer.current_token != Token::Level(base_lvl) {
             match &parser.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
-                    "MARR" => family.add_event(Event::parse(parser, level + 1).unwrap()),
+                    "MARR" => family.add_event(Event::parse(parser).unwrap()),
                     "HUSB" => family.set_individual1(parser.take_line_value()),
                     "WIFE" => family.set_individual2(parser.take_line_value()),
                     "CHIL" => family.add_child(parser.take_line_value()),
-                    _ => parser.skip_current_tag(level + 1, "Family"),
+                    _ => parser.skip_current_tag(parser.level, "Family"),
                 },
-                Token::Level(_) => parser.tokenizer.next_token(),
-                _ => parser.handle_unexpected_token(level + 1, "FAM"),
+                Token::Level(_) => parser.set_level(),
+                _ => parser.handle_unexpected_token(parser.level, "FAM"),
             }
         }
 

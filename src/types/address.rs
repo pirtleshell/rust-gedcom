@@ -37,7 +37,8 @@ impl fmt::Display for Address {
 }
 
 impl Parsable<Address> for Address {
-    fn parse(parser: &mut Parser, level: u8) -> Result<Address, ParsingError> {
+    fn parse(parser: &mut Parser) -> Result<Address, ParsingError> {
+        let base_lvl = parser.level;
         // skip ADDR tag
         if let Token::Tag(_) = &parser.tokenizer.current_token {
             parser.tokenizer.next_token();
@@ -54,7 +55,7 @@ impl Parsable<Address> for Address {
 
         loop {
             if let Token::Level(cur_level) = parser.tokenizer.current_token {
-                if cur_level <= level {
+                if cur_level <= base_lvl {
                     break;
                 }
             }
@@ -72,9 +73,9 @@ impl Parsable<Address> for Address {
                     "POST" => address.post = Some(parser.take_line_value()),
                     "CTRY" => address.country = Some(parser.take_line_value()),
                     // TODO ParsingError
-                    _ => parser.skip_current_tag(level + 1, "Address"),
+                    _ => parser.skip_current_tag(parser.level, "Address"),
                 },
-                Token::Level(_) => parser.tokenizer.next_token(),
+                Token::Level(_) => parser.set_level(),
                 _ => panic!(
                     "Unhandled Address Token: {:?}",
                     parser.tokenizer.current_token

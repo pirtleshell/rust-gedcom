@@ -11,6 +11,7 @@ use crate::types::{
 /// The Gedcom parser that converts the token list into a data structure
 pub struct Parser<'a> {
     pub(crate) tokenizer: Tokenizer<'a>,
+    pub(crate) level: u8,
 }
 
 // TODO: expose useful helpers without publicizing tokenizer
@@ -22,7 +23,10 @@ impl<'a> Parser<'a> {
         let mut tokenizer = Tokenizer::new(chars);
         if tokenizer.current_token == Token::None {
             tokenizer.next_token();
-            Parser { tokenizer }
+            Parser {
+                tokenizer,
+                level: 0,
+            }
         } else {
             panic!(
                 "Unexpected starting token, found {:?}",
@@ -31,11 +35,24 @@ impl<'a> Parser<'a> {
         }
     }
 
+    pub(crate) fn set_level(&mut self) {
+        if let Token::Level(lvl) = self.tokenizer.current_token {
+            self.level = lvl;
+            self.tokenizer.next_token();
+        } else {
+            panic!(
+                "{} Expected Level, found {:?}",
+                self.dbg(),
+                &self.tokenizer.current_token
+            );
+        }
+    }
+
     /// Does the actual parsing of the record.
     pub fn parse_record(&mut self) -> Gedcom {
         let mut data = Gedcom::default();
         loop {
-            let level = match self.tokenizer.current_token {
+            self.level = match self.tokenizer.current_token {
                 Token::Level(n) => n,
                 _ => panic!(
                     "{} Expected Level, found {:?}",
@@ -54,22 +71,20 @@ impl<'a> Parser<'a> {
 
             if let Token::Tag(tag) = &self.tokenizer.current_token {
                 match tag.as_str() {
-                    "HEAD" => data.header = Header::parse(self, 0).unwrap(),
-                    "FAM" => {
-                        data.add_family(Family::parse(self, level).unwrap().with_xref(pointer))
-                    }
+                    "HEAD" => data.header = Header::parse(self).unwrap(),
+                    "FAM" => data.add_family(Family::parse(self).unwrap().with_xref(pointer)),
                     "INDI" => {
-                        let mut individual = Individual::parse(self, level).unwrap();
+                        let mut individual = Individual::parse(self).unwrap();
                         individual.xref = pointer;
                         data.add_individual(individual);
                     }
-                    "REPO" => data.add_repository(self.parse_repository(level, pointer)),
-                    "SOUR" => data.add_source(self.parse_source(level, pointer)),
-                    "SUBM" => data.add_submitter(self.parse_submitter(level, pointer)),
+                    "REPO" => data.add_repository(self.parse_repository(pointer)),
+                    "SOUR" => data.add_source(self.parse_source(pointer)),
+                    "SUBM" => data.add_submitter(self.parse_submitter(pointer)),
                     "TRLR" => break,
                     _ => {
                         println!("{} Unhandled top-level data {}", self.dbg(), tag);
-                        self.skip_block(level)
+                        self.skip_block(self.level)
                     }
                 };
             } else if let Token::CustomTag(_) = &self.tokenizer.current_token {
@@ -79,7 +94,7 @@ impl<'a> Parser<'a> {
                     self.dbg(),
                     custom_data
                 );
-                self.skip_block(level);
+                self.skip_block(self.level);
             } else {
                 println!(
                     "{} Unhandled token {:?}",
@@ -94,36 +109,38 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses SUBM top-level tag
-    fn parse_submitter(&mut self, level: u8, xref: Option<String>) -> Submitter {
+    fn parse_submitter(&mut self, xref: Option<String>) -> Submitter {
+        let base_lvl = self.level;
         // skip over SUBM tag name
         self.tokenizer.next_token();
 
         let mut submitter = Submitter::new(xref);
-        while self.tokenizer.current_token != Token::Level(level) {
+        while self.tokenizer.current_token != Token::Level(base_lvl) {
             match &self.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
                     "NAME" => submitter.name = Some(self.take_line_value()),
                     "ADDR" => {
-                        submitter.address = Some(Address::parse(self, level + 1).unwrap());
+                        submitter.address = Some(Address::parse(self).unwrap());
                     }
                     "PHON" => submitter.phone = Some(self.take_line_value()),
-                    _ => self.skip_current_tag(level + 1, "Submitter"),
+                    _ => self.skip_current_tag(self.level, "Submitter"),
                 },
-                Token::Level(_) => self.tokenizer.next_token(),
-                _ => self.handle_unexpected_token(level + 1, "SUBM"),
+                Token::Level(_) => self.set_level(),
+                _ => self.handle_unexpected_token(self.level, "SUBM"),
             }
         }
         submitter
     }
 
-    fn parse_source(&mut self, level: u8, xref: Option<String>) -> Source {
+    fn parse_source(&mut self, xref: Option<String>) -> Source {
+        let base_lvl = self.level;
         // skip SOUR tag
         self.tokenizer.next_token();
         let mut source = Source::new(xref);
 
         loop {
             if let Token::Level(cur_level) = self.tokenizer.current_token {
-                if cur_level <= level {
+                if cur_level <= base_lvl {
                     break;
                 }
             }
@@ -131,17 +148,15 @@ impl<'a> Parser<'a> {
                 Token::Tag(tag) => match tag.as_str() {
                     "DATA" => self.tokenizer.next_token(),
                     // TODO: cleanup to just use parse_event
-                    "EVEN" => source
-                        .data
-                        .add_event(Event::parse(self, level + 1).unwrap()),
+                    "EVEN" => source.data.add_event(Event::parse(self).unwrap()),
                     "AGNC" => source.data.agency = Some(self.take_line_value()),
-                    "ABBR" => source.abbreviation = Some(self.take_continued_text(level + 1)),
-                    "TITL" => source.title = Some(self.take_continued_text(level + 1)),
-                    "REPO" => source.add_repo_citation(self.parse_repo_citation(level + 1)),
-                    _ => self.skip_current_tag(level + 1, "Source"),
+                    "ABBR" => source.abbreviation = Some(self.take_continued_text(self.level)),
+                    "TITL" => source.title = Some(self.take_continued_text(self.level)),
+                    "REPO" => source.add_repo_citation(self.parse_repo_citation(self.level)),
+                    _ => self.skip_current_tag(self.level, "Source"),
                 },
-                Token::Level(_) => self.tokenizer.next_token(),
-                _ => self.handle_unexpected_token(level + 1, "SOUR"),
+                Token::Level(_) => self.set_level(),
+                _ => self.handle_unexpected_token(self.level, "SOUR"),
             }
         }
 
@@ -149,7 +164,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses REPO top-level tag.
-    fn parse_repository(&mut self, level: u8, xref: Option<String>) -> Repository {
+    fn parse_repository(&mut self, xref: Option<String>) -> Repository {
+        let base_lvl = self.level;
         // skip REPO tag
         self.tokenizer.next_token();
         let mut repo = Repository {
@@ -159,18 +175,18 @@ impl<'a> Parser<'a> {
         };
         loop {
             if let Token::Level(cur_level) = self.tokenizer.current_token {
-                if cur_level <= level {
+                if cur_level <= base_lvl {
                     break;
                 }
             }
             match &self.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
                     "NAME" => repo.name = Some(self.take_line_value()),
-                    "ADDR" => repo.address = Some(Address::parse(self, level + 1).unwrap()),
-                    _ => self.skip_current_tag(level + 1, "Repository"),
+                    "ADDR" => repo.address = Some(Address::parse(self).unwrap()),
+                    _ => self.skip_current_tag(self.level, "Repository"),
                 },
-                Token::Level(_) => self.tokenizer.next_token(),
-                _ => self.handle_unexpected_token(level + 1, "REPO"),
+                Token::Level(_) => self.set_level(),
+                _ => self.handle_unexpected_token(self.level, "REPO"),
             }
         }
 
@@ -203,7 +219,7 @@ impl<'a> Parser<'a> {
                     }
                     _ => panic!("{} Unhandled GEDC Tag: {}", self.dbg(), tag),
                 },
-                Token::Level(_) => self.tokenizer.next_token(),
+                Token::Level(_) => self.set_level(),
                 _ => self.handle_unexpected_token(2, "GEDC"),
             }
         }
@@ -227,7 +243,7 @@ impl<'a> Parser<'a> {
                     "CALN" => citation.call_number = Some(self.take_line_value()),
                     _ => panic!("{} Unhandled RepoCitation Tag: {}", self.dbg(), tag),
                 },
-                Token::Level(_) => self.tokenizer.next_token(),
+                Token::Level(_) => self.set_level(),
                 _ => panic!(
                     "Unhandled RepoCitation Token: {:?}",
                     self.tokenizer.current_token
@@ -254,7 +270,7 @@ impl<'a> Parser<'a> {
                     "PAGE" => citation.page = Some(self.take_line_value()),
                     _ => self.skip_current_tag(level + 1, "Citation"),
                 },
-                Token::Level(_) => self.tokenizer.next_token(),
+                Token::Level(_) => self.set_level(),
                 _ => self.handle_unexpected_token(level + 1, "Citation"),
             }
         }
@@ -281,7 +297,7 @@ impl<'a> Parser<'a> {
                     "CONC" => value.push_str(&self.take_line_value()),
                     _ => panic!("{} Unhandled Continuation Tag: {}", self.dbg(), tag),
                 },
-                Token::Level(_) => self.tokenizer.next_token(),
+                Token::Level(_) => self.set_level(),
                 _ => panic!(
                     "Unhandled Continuation Token: {:?}",
                     self.tokenizer.current_token
@@ -362,7 +378,7 @@ pub trait Parsable<T> {
     ///
     /// # Errors
     /// Raises a `ParsingError` when unhandled or unexpected tokens are found.
-    fn parse(parser: &mut Parser, level: u8) -> Result<T, ParsingError>;
+    fn parse(parser: &mut Parser) -> Result<T, ParsingError>;
 }
 
 #[derive(Debug)]

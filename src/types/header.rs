@@ -41,14 +41,15 @@ impl Header {
 
 impl Parsable<Header> for Header {
     /// Parses HEAD top-level tag
-    fn parse(parser: &mut Parser, level: u8) -> Result<Header, ParsingError> {
+    fn parse(parser: &mut Parser) -> Result<Header, ParsingError> {
+        let base_lvl = parser.level;
         // skip over HEAD tag name
         parser.tokenizer.next_token();
 
         let mut header = Header::default();
 
         // just skipping the header for now
-        while parser.tokenizer.current_token != Token::Level(level) {
+        while parser.tokenizer.current_token != Token::Level(base_lvl) {
             match &parser.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
                     // TODO: CHAR.VERS - version
@@ -87,7 +88,7 @@ impl Parsable<Header> for Header {
                     }
                     _ => parser.skip_current_tag(1, "Header"),
                 },
-                Token::Level(_) => parser.tokenizer.next_token(),
+                Token::Level(_) => parser.set_level(),
                 _ => parser.handle_unexpected_token(1, "HEAD"),
             }
         }

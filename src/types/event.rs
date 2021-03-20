@@ -132,7 +132,8 @@ impl Event {
 }
 
 impl Parsable<Event> for Event {
-    fn parse(parser: &mut Parser, level: u8) -> Result<Event, ParsingError> {
+    fn parse(parser: &mut Parser) -> Result<Event, ParsingError> {
+        let base_lvl = parser.level;
         // extract current tag name to determine event type.
         let tag: &str = parser.take_tag();
 
@@ -154,7 +155,7 @@ impl Parsable<Event> for Event {
 
         loop {
             if let Token::Level(cur_level) = parser.tokenizer.current_token {
-                if cur_level <= level {
+                if cur_level <= base_lvl {
                     break;
                 }
             }
@@ -163,10 +164,10 @@ impl Parsable<Event> for Event {
                     "DATE" => event.date = Some(parser.take_line_value()),
                     "PLAC" => event.place = Some(parser.take_line_value()),
                     // TODO Citation::parse
-                    "SOUR" => event.add_citation(parser.parse_citation(level + 1)),
-                    _ => parser.skip_current_tag(level + 1, "Event"),
+                    "SOUR" => event.add_citation(parser.parse_citation(parser.level)),
+                    _ => parser.skip_current_tag(parser.level, "Event"),
                 },
-                Token::Level(_) => parser.tokenizer.next_token(),
+                Token::Level(_) => parser.set_level(),
                 Token::LineValue(v) => {
                     // some events have bool-like descriptor like "Y", apparently? just skip those?
                     if v.as_str() == "Y" {
@@ -184,7 +185,7 @@ impl Parsable<Event> for Event {
                         parser.tokenizer.next_token();
                     }
                 }
-                _ => parser.handle_unexpected_token(level + 1, "Event"),
+                _ => parser.handle_unexpected_token(parser.level, "Event"),
             }
         }
 
