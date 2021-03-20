@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 /// The data structure representing all the data within a gedcom file
-pub struct GedcomData {
+pub struct Gedcom {
     /// Header containing file metadata
     pub header: Header,
     /// List of submitters of the facts
@@ -23,7 +23,20 @@ pub struct GedcomData {
 }
 
 // should maybe store these by xref if available?
-impl GedcomData {
+impl Gedcom {
+    // pub(crate) fn add(&mut self, data: &Box<dyn GedcomData>) {
+    //     match data.get_type() {
+    //         GedcomDataType::Family(family) => self.families.push(family),
+    //         GedcomDataType::Header(header) => self.header = header,
+    //         GedcomDataType::Individual(person) => self.individuals.push(person),
+    //         GedcomDataType::Media(media) => self.multimedia.push(media),
+    //         GedcomDataType::Repository(repo) => self.repositories.push(repo),
+    //         GedcomDataType::Source(source) => self.sources.push(source),
+    //         GedcomDataType::Submitter(submitter) => self.submitters.push(submitter),
+    //         GedcomDataType::Other(s) => println!("Unhandled datatype: {}", s),
+    //     }
+    // }
+
     /// Adds a `Family` (a relationship between individuals) to the tree
     pub fn add_family(&mut self, family: Family) {
         self.families.push(family);
@@ -63,3 +76,20 @@ impl GedcomData {
         println!("----------------------");
     }
 }
+
+// /// Type of data that can be added to a Gedcom tree.
+// #[derive(Debug)]
+// pub(crate) enum GedcomDataType {
+//     Family(Family),
+//     Header(Header),
+//     Individual(Individual),
+//     Media(Media),
+//     Repository(Repository),
+//     Source(Source),
+//     Submitter(Submitter),
+//     Other(String),
+// }
+
+// pub(crate) trait GedcomData {
+//     fn get_type(&self) -> GedcomDataType;
+// }

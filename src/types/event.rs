@@ -1,4 +1,7 @@
+use crate::parser::{Parsable, Parser, ParsingError};
+use crate::tokenizer::Token;
 use crate::types::SourceCitation;
+
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
 use std::{fmt, string::ToString};
@@ -119,6 +122,67 @@ impl Event {
     #[must_use]
     pub fn get_citations(&self) -> Vec<SourceCitation> {
         self.citations.clone()
+    }
+}
+
+impl Parsable<Event> for Event {
+    fn parse(parser: &mut Parser, level: u8) -> Result<Event, ParsingError> {
+        // extract current tag name to determine event type.
+        let event_tag_token = parser.tokenizer.take_token();
+        let tag: &str = if let Token::Tag(t) = &event_tag_token {
+            t.as_str().clone()
+        } else {
+            panic!(
+                "Expected event tag, found {:?}",
+                &parser.tokenizer.current_token
+            );
+        };
+
+        // Events begin with either EVEN <type>, or a type tag.
+        let type_tag: &str = if tag == "EVEN" {
+            println!("{:?}", &parser.tokenizer.current_token);
+            if let Token::LineValue(v) = &parser.tokenizer.current_token {
+                v
+            } else {
+                // if there's no line value, there's supposed to be a TYPE tag
+                "OTHER"
+            }
+        } else {
+            tag
+        };
+
+        let mut event = Event::from_tag(&type_tag);
+
+        parser.tokenizer.next_token();
+
+        loop {
+            if let Token::Level(cur_level) = parser.tokenizer.current_token {
+                if cur_level <= level {
+                    break;
+                }
+            }
+            match &parser.tokenizer.current_token {
+                Token::Tag(tag) => match tag.as_str() {
+                    "DATE" => event.date = Some(parser.take_line_value()),
+                    "PLAC" => event.place = Some(parser.take_line_value()),
+                    // TODO Citation::parse
+                    "SOUR" => event.add_citation(parser.parse_citation(level + 1)),
+                    _ => parser.skip_current_tag(level + 1, "Event"),
+                },
+                Token::Level(_) => parser.tokenizer.next_token(),
+                // some events are also bool-like w/ Y values, apparently?
+                Token::LineValue(v) => {
+                    // TODO: return error and stop using dbg
+                    if v.as_str() != "Y" {
+                        panic!("{} Surprise value {} as event value", parser.dbg(), v);
+                    }
+                    // just skip Y's
+                    parser.tokenizer.next_token();
+                }
+                _ => parser.handle_unexpected_token(level + 1, "Event"),
+            }
+        }
+        Ok(event)
     }
 }
 
