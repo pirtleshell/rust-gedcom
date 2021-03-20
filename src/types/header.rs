@@ -60,7 +60,7 @@ impl Parsable<Header> for Header {
                     "DEST" => header.add_destination(parser.take_line_value()),
                     "LANG" => header.language = Some(parser.take_line_value()),
                     "FILE" => header.filename = Some(parser.take_line_value()),
-                    "NOTE" => header.note = Some(parser.take_continued_text(1)),
+                    "NOTE" => header.note = Some(parser.take_continued_text()),
                     "SUBM" => header.submitter_tag = Some(parser.take_line_value()),
                     "SUBN" => header.submission_tag = Some(parser.take_line_value()),
                     "TIME" => {

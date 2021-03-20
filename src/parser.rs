@@ -52,16 +52,7 @@ impl<'a> Parser<'a> {
     pub fn parse_record(&mut self) -> Gedcom {
         let mut data = Gedcom::default();
         loop {
-            self.level = match self.tokenizer.current_token {
-                Token::Level(n) => n,
-                _ => panic!(
-                    "{} Expected Level, found {:?}",
-                    self.dbg(),
-                    self.tokenizer.current_token
-                ),
-            };
-
-            self.tokenizer.next_token();
+            self.set_level();
 
             let mut pointer: Option<String> = None;
             if let Token::Pointer(xref) = &self.tokenizer.current_token {
@@ -147,12 +138,11 @@ impl<'a> Parser<'a> {
             match &self.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
                     "DATA" => self.tokenizer.next_token(),
-                    // TODO: cleanup to just use parse_event
                     "EVEN" => source.data.add_event(Event::parse(self).unwrap()),
                     "AGNC" => source.data.agency = Some(self.take_line_value()),
-                    "ABBR" => source.abbreviation = Some(self.take_continued_text(self.level)),
-                    "TITL" => source.title = Some(self.take_continued_text(self.level)),
-                    "REPO" => source.add_repo_citation(self.parse_repo_citation(self.level)),
+                    "ABBR" => source.abbreviation = Some(self.take_continued_text()),
+                    "TITL" => source.title = Some(self.take_continued_text()),
+                    "REPO" => source.add_repo_citation(self.parse_repo_citation()),
                     _ => self.skip_current_tag("Source"),
                 },
                 Token::Level(_) => self.set_level(),
@@ -226,7 +216,8 @@ impl<'a> Parser<'a> {
         header
     }
 
-    fn parse_repo_citation(&mut self, level: u8) -> RepoCitation {
+    fn parse_repo_citation(&mut self) -> RepoCitation {
+        let base_lvl = self.level;
         let xref = self.take_line_value();
         let mut citation = RepoCitation {
             xref,
@@ -234,7 +225,7 @@ impl<'a> Parser<'a> {
         };
         loop {
             if let Token::Level(cur_level) = self.tokenizer.current_token {
-                if cur_level <= level {
+                if cur_level <= base_lvl {
                     break;
                 }
             }
@@ -250,6 +241,7 @@ impl<'a> Parser<'a> {
                 ),
             }
         }
+
         citation
     }
 
@@ -275,17 +267,19 @@ impl<'a> Parser<'a> {
                 _ => self.handle_unexpected_token("Citation"),
             }
         }
+
         citation
     }
 
     /// Takes the value of the current line including handling
     /// multi-line values from CONT & CONC tags.
-    pub(crate) fn take_continued_text(&mut self, level: u8) -> String {
+    pub(crate) fn take_continued_text(&mut self) -> String {
+        let base_lvl = self.level;
         let mut value = self.take_line_value();
 
         loop {
             if let Token::Level(cur_level) = self.tokenizer.current_token {
-                if cur_level <= level {
+                if cur_level <= base_lvl {
                     break;
                 }
             }
@@ -324,6 +318,7 @@ impl<'a> Parser<'a> {
             );
         }
         self.tokenizer.next_token();
+
         value
     }
 
