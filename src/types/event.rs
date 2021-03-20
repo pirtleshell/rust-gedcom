@@ -8,12 +8,29 @@ use std::{fmt, string::ToString};
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub enum EventType {
     Adoption,
+    Baptism,
+    BarMitzvah,
+    BasMitzvah,
     Birth,
+    Blessing,
     Burial,
-    Death,
+    Census,
     Christening,
+    ChristeningAdult,
+    Confirmation,
+    Cremation,
+    Death,
+    Emigration,
+    FirstCommunion,
+    Graduation,
+    Immigration,
     Marriage,
+    Naturalization,
+    Ordination,
+    Probate,
     Residence,
+    Retirement,
+    Will,
     SourceData(String),
 
     // "Other" is used to construct an event without requiring an explicit event type
@@ -23,6 +40,43 @@ pub enum EventType {
 impl ToString for EventType {
     fn to_string(&self) -> String {
         format!("{:?}", self)
+    }
+}
+
+impl EventType {
+    #[must_use]
+    pub fn from_tag(tag: &str) -> EventType {
+        match tag {
+            "ADOP" => EventType::Adoption,
+            "BAPM" => EventType::Baptism,
+            "BARM" => EventType::BarMitzvah,
+            "BASM" => EventType::BasMitzvah,
+            "BLES" => EventType::Blessing,
+            "BIRT" => EventType::Birth,
+            "BURI" => EventType::Burial,
+            "CENS" => EventType::Census,
+            "CHR" => EventType::Christening,
+            "CHRA" => EventType::ChristeningAdult,
+            "CONF" => EventType::Confirmation,
+            "CREM" => EventType::Cremation,
+            "DEAT" => EventType::Death,
+            "EMIG" => EventType::Emigration,
+            "FCOM" => EventType::FirstCommunion,
+            "GRAD" => EventType::Graduation,
+            "IMMI" => EventType::Immigration,
+            "MARR" => EventType::Marriage,
+            "NATU" => EventType::Naturalization,
+            "ORDN" => EventType::Ordination,
+            "PROB" => EventType::Probate,
+            "RESI" => EventType::Residence,
+            "RETI" => EventType::Retirement,
+            "WILL" => EventType::Will,
+
+            "OTHER" => EventType::Other,
+
+            "EVEN" => panic!("EVEN passed as event tag instead of value."),
+            _ => panic!("Unrecognized event tag: {}", tag),
+        }
     }
 }
 
@@ -54,17 +108,7 @@ impl Event {
 
     #[must_use]
     pub fn from_tag(tag: &str) -> Event {
-        let etype = match tag {
-            "ADOP" => EventType::Adoption,
-            "BIRT" => EventType::Birth,
-            "BURI" => EventType::Burial,
-            "CHR" => EventType::Christening,
-            "DEAT" => EventType::Death,
-            "MARR" => EventType::Marriage,
-            "RESI" => EventType::Residence,
-            "OTHER" => EventType::Other,
-            _ => panic!("Unrecognized event tag: {}", tag),
-        };
+        let etype = EventType::from_tag(tag);
         Event::new(etype)
     }
 

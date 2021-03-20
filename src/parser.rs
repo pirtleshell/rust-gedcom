@@ -4,8 +4,8 @@ use std::{panic, str::Chars};
 use crate::tokenizer::{Token, Tokenizer};
 use crate::tree::GedcomData;
 use crate::types::{
-    event::HasEvents, Address, CustomData, Event, Family, FamilyLink, Gender, Header, Individual,
-    Name, RepoCitation, Repository, Source, SourceCitation, Submitter,
+    event::HasEvents, Address, CustomData, Event, EventType, Family, FamilyLink, Gender, Header,
+    Individual, Name, RepoCitation, Repository, Source, SourceCitation, Submitter,
 };
 
 /// The Gedcom parser that converts the token list into a data structure
@@ -433,11 +433,27 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_event(&mut self, tag: &str, level: u8) -> Event {
+        // Events begin with either EVEN <type>, or a type tag.
+        let type_tag: &str = if tag == "EVEN" {
+            println!("{:?}", &self.tokenizer.current_token);
+            if let Token::LineValue(v) = &self.tokenizer.current_token {
+                v
+            } else {
+                // if there's no line value, there's probably a TYPE tag
+                "OTHER"
+            }
+        } else {
+            tag
+        };
+
+        println!("Event type: {}", &type_tag);
+        let mut event = Event::from_tag(&type_tag);
+
         self.tokenizer.next_token();
-        let mut event = Event::from_tag(tag);
+
         loop {
-            if let Token::Level(cur_level) = self.tokenizer.current_token {
-                if cur_level <= level {
+            if let Token::Level(cur_level) = &self.tokenizer.current_token {
+                if cur_level <= &level {
                     break;
                 }
             }
@@ -445,6 +461,10 @@ impl<'a> Parser<'a> {
                 Token::Tag(tag) => match tag.as_str() {
                     "DATE" => event.date = Some(self.take_line_value()),
                     "PLAC" => event.place = Some(self.take_line_value()),
+                    "TYPE" => {
+                        let type_tag = self.take_line_value();
+                        event.event = EventType::SourceData(type_tag);
+                    }
                     "SOUR" => event.add_citation(self.parse_citation(level + 1)),
                     _ => self.skip_current_tag(level + 1, "Event"),
                 },
@@ -457,7 +477,7 @@ impl<'a> Parser<'a> {
                     // just skip Y's
                     self.tokenizer.next_token();
                 }
-                _ => panic!("Unhandled Event Token: {:?}", self.tokenizer.current_token),
+                _ => panic!("Unhandled Event Token: {:?}", &self.tokenizer.current_token),
             }
         }
         event
