@@ -127,7 +127,7 @@ impl<'a> Parser<'a> {
                             self.tokenizer.next_token();
                         }
                     }
-                    _ => panic!("{} Unhandled Header Tag: {}", self.dbg(), tag),
+                    _ => self.skip_current_tag(1, "Header"),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
                 _ => self.handle_unexpected_token(1, "HEAD"),
@@ -150,16 +150,12 @@ impl<'a> Parser<'a> {
                         submitter.address = Some(self.parse_address(level + 1));
                     }
                     "PHON" => submitter.phone = Some(self.take_line_value()),
-                    _ => panic!("{} Unhandled Submitter Tag: {}", self.dbg(), tag),
+                    _ => self.skip_current_tag(level + 1, "Submitter"),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
-                _ => panic!(
-                    "Unhandled Submitter Token: {:?}",
-                    self.tokenizer.current_token
-                ),
+                _ => self.handle_unexpected_token(level + 1, "SUBM"),
             }
         }
-        // println!("found submitter:\n{:#?}", submitter);
         submitter
     }
 
@@ -191,7 +187,7 @@ impl<'a> Parser<'a> {
                         self.tokenizer.next_token(); // DATE tag
                         individual.last_updated = Some(self.take_line_value());
                     }
-                    _ => self.handle_unknown_tag(level + 1, "Individual"),
+                    _ => self.skip_current_tag(level + 1, "Individual"),
                 },
                 Token::CustomTag(tag) => {
                     let tag_clone = tag.clone();
@@ -423,7 +419,7 @@ impl<'a> Parser<'a> {
                     "NSFX" => name.suffix = Some(self.take_line_value()),
                     "SPFX" => name.surname_prefix = Some(self.take_line_value()),
                     "SURN" => name.surname = Some(self.take_line_value()),
-                    _ => self.handle_unknown_tag(cur_level, "Name"),
+                    _ => self.skip_current_tag(cur_level, "Name"),
                 },
                 Token::Level(_) => {
                     cur_level += 1;
@@ -450,7 +446,7 @@ impl<'a> Parser<'a> {
                     "DATE" => event.date = Some(self.take_line_value()),
                     "PLAC" => event.place = Some(self.take_line_value()),
                     "SOUR" => event.add_citation(self.parse_citation(level + 1)),
-                    _ => self.handle_unknown_tag(level + 1, "Event"),
+                    _ => self.skip_current_tag(level + 1, "Event"),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
                 _ => panic!("Unhandled Event Token: {:?}", self.tokenizer.current_token),
@@ -522,7 +518,7 @@ impl<'a> Parser<'a> {
             match &self.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
                     "PAGE" => citation.page = Some(self.take_line_value()),
-                    _ => self.handle_unknown_tag(level + 1, "Citation"),
+                    _ => self.skip_current_tag(level + 1, "Citation"),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
                 _ => self.handle_unexpected_token(level + 1, "Citation"),
@@ -583,7 +579,7 @@ impl<'a> Parser<'a> {
         value
     }
 
-    fn handle_unknown_tag(&mut self, level: u8, parent_name: &str) {
+    fn skip_current_tag(&mut self, level: u8, parent_name: &str) {
         if let Token::Tag(tag) = &self.tokenizer.current_token {
             println!(
                 "{} Unhandled {} Tag: {}",
@@ -591,6 +587,8 @@ impl<'a> Parser<'a> {
                 parent_name,
                 tag
             );
+        } else {
+            panic!("Expected tag, found {:?}", &self.tokenizer.current_token);
         }
         self.skip_block(level);
     }
