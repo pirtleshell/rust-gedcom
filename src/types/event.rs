@@ -4,7 +4,9 @@ use crate::types::SourceCitation;
 
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
-use std::{fmt, string::ToString};
+use std::default::Default;
+use std::fmt;
+use std::string::ToString;
 
 #[allow(clippy::module_name_repetitions)]
 #[derive(Clone, Debug, PartialEq)]
@@ -83,12 +85,19 @@ impl EventType {
     }
 }
 
+impl Default for EventType {
+    fn default() -> EventType {
+        EventType::Other
+    }
+}
+
 /// Event fact
-#[derive(Clone)]
+#[derive(Default, Clone)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct Event {
     pub event: EventType,
     pub date: Option<String>,
+    pub descriptor: Option<String>,
     pub place: Option<String>,
     pub citations: Vec<SourceCitation>,
 }
@@ -96,12 +105,9 @@ pub struct Event {
 impl Event {
     #[must_use]
     pub fn new(etype: EventType) -> Event {
-        Event {
-            event: etype,
-            date: None,
-            place: None,
-            citations: Vec::new(),
-        }
+        let mut event = Event::default();
+        event.event = etype;
+        event
     }
 
     /** converts an event to be of type `SourceData` with `value` as the data */
@@ -161,18 +167,27 @@ impl Parsable<Event> for Event {
                     _ => parser.skip_current_tag(level + 1, "Event"),
                 },
                 Token::Level(_) => parser.tokenizer.next_token(),
-                // some events are also bool-like w/ Y values, apparently?
                 Token::LineValue(v) => {
-                    // TODO: return error and stop using dbg
-                    if v.as_str() != "Y" {
-                        panic!("{} Surprise value {} as event value", parser.dbg(), v);
+                    // some events have bool-like descriptor like "Y", apparently? just skip those?
+                    if v.as_str() == "Y" {
+                        parser.tokenizer.next_token();
+                    } else {
+                        // TODO: handle comma-delimited event types...
+                        // just setting as descriptor for now
+
+                        event.descriptor = Some(v.into());
+                        println!(
+                            "{} Using event descriptor: {:?}",
+                            parser.dbg(),
+                            &event.descriptor
+                        );
+                        parser.tokenizer.next_token();
                     }
-                    // just skip Y's
-                    parser.tokenizer.next_token();
                 }
                 _ => parser.handle_unexpected_token(level + 1, "Event"),
             }
         }
+
         Ok(event)
     }
 }

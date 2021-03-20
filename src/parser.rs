@@ -4,7 +4,7 @@ use std::{error::Error, fmt, panic, str::Chars};
 use crate::tokenizer::{Token, Tokenizer};
 use crate::tree::Gedcom;
 use crate::types::{
-    Address, CustomData, Family, Header, Individual, RepoCitation, Repository, Source,
+    Address, CustomData, Event, Family, Header, Individual, RepoCitation, Repository, Source,
     SourceCitation, Submitter,
 };
 
@@ -104,7 +104,7 @@ impl<'a> Parser<'a> {
                 Token::Tag(tag) => match tag.as_str() {
                     "NAME" => submitter.name = Some(self.take_line_value()),
                     "ADDR" => {
-                        submitter.address = Some(self.parse_address(level + 1));
+                        submitter.address = Some(Address::parse(self, level + 1).unwrap());
                     }
                     "PHON" => submitter.phone = Some(self.take_line_value()),
                     _ => self.skip_current_tag(level + 1, "Submitter"),
@@ -131,13 +131,9 @@ impl<'a> Parser<'a> {
                 Token::Tag(tag) => match tag.as_str() {
                     "DATA" => self.tokenizer.next_token(),
                     // TODO: cleanup to just use parse_event
-                    "EVEN" => {
-                        panic!("{}, here!", self.dbg_lvl(level + 1));
-                        // let events_recorded = self.take_line_value();
-                        // let mut event = self.parse_event(level + 2);
-                        // event.with_source_data(events_recorded);
-                        // source.data.add_event(event);
-                    }
+                    "EVEN" => source
+                        .data
+                        .add_event(Event::parse(self, level + 1).unwrap()),
                     "AGNC" => source.data.agency = Some(self.take_line_value()),
                     "ABBR" => source.abbreviation = Some(self.take_continued_text(level + 1)),
                     "TITL" => source.title = Some(self.take_continued_text(level + 1)),
@@ -170,7 +166,7 @@ impl<'a> Parser<'a> {
             match &self.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
                     "NAME" => repo.name = Some(self.take_line_value()),
-                    "ADDR" => repo.address = Some(self.parse_address(level + 1)),
+                    "ADDR" => repo.address = Some(Address::parse(self, level + 1).unwrap()),
                     _ => self.skip_current_tag(level + 1, "Repository"),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
@@ -239,14 +235,6 @@ impl<'a> Parser<'a> {
             }
         }
         citation
-    }
-
-    /// Parses ADDR tag
-    fn parse_address(&mut self, level: u8) -> Address {
-        match Address::parse(self, level) {
-            Ok(addr) => addr,
-            Err(e) => panic!("address fail: {:?}", e),
-        }
     }
 
     // TODO Citation::parse
@@ -363,7 +351,7 @@ impl<'a> Parser<'a> {
 
     /// Debug function displaying GEDCOM line number of error message.
     pub(crate) fn dbg(&self) -> String {
-        format!("line {}:", self.tokenizer.line)
+        format!("line {}:", &self.tokenizer.line)
     }
 }
 
