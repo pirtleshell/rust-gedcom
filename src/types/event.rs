@@ -164,7 +164,7 @@ impl Parsable<Event> for Event {
                     "DATE" => event.date = Some(parser.take_line_value()),
                     "PLAC" => event.place = Some(parser.take_line_value()),
                     // TODO Citation::parse
-                    "SOUR" => event.add_citation(parser.parse_citation(parser.level)),
+                    "SOUR" => event.add_citation(parser.parse_citation()),
                     _ => parser.skip_current_tag("Event"),
                 },
                 Token::Level(_) => parser.set_level(),

@@ -254,14 +254,15 @@ impl<'a> Parser<'a> {
     }
 
     // TODO Citation::parse
-    pub(crate) fn parse_citation(&mut self, level: u8) -> SourceCitation {
+    pub(crate) fn parse_citation(&mut self) -> SourceCitation {
+        let base_lvl = self.level;
         let mut citation = SourceCitation {
             xref: self.take_line_value(),
             page: None,
         };
         loop {
             if let Token::Level(cur_level) = self.tokenizer.current_token {
-                if cur_level <= level {
+                if cur_level <= base_lvl {
                     break;
                 }
             }
