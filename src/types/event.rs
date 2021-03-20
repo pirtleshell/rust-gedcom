@@ -140,7 +140,6 @@ impl Parsable<Event> for Event {
 
         // Events begin with either EVEN <type>, or a type tag.
         let type_tag: &str = if tag == "EVEN" {
-            println!("{:?}", &parser.tokenizer.current_token);
             if let Token::LineValue(v) = &parser.tokenizer.current_token {
                 v
             } else {

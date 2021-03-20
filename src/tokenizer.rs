@@ -76,7 +76,6 @@ impl<'a> Tokenizer<'a> {
 
         // handle tag with trailing whitespace
         if self.current_char == '\n' {
-            // println!("line {}: trailing whitespace {:?}", self.line, self.current_token);
             self.next_token();
             return;
         }

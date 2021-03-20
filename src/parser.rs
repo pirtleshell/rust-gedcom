@@ -4,8 +4,8 @@ use std::{error::Error, fmt, panic, str::Chars};
 use crate::tokenizer::{Token, Tokenizer};
 use crate::tree::Gedcom;
 use crate::types::{
-    event::HasEvents, Address, CustomData, Event, Family, FamilyLink, Gender, Header, Individual,
-    Name, RepoCitation, Repository, Source, SourceCitation, Submitter,
+    Address, CustomData, Family, Header, Individual, RepoCitation, Repository, Source,
+    SourceCitation, Submitter,
 };
 
 /// The Gedcom parser that converts the token list into a data structure
@@ -20,8 +20,15 @@ impl<'a> Parser<'a> {
     #[must_use]
     pub fn new(chars: Chars<'a>) -> Parser {
         let mut tokenizer = Tokenizer::new(chars);
-        tokenizer.next_token();
-        Parser { tokenizer }
+        if tokenizer.current_token == Token::None {
+            tokenizer.next_token();
+            Parser { tokenizer }
+        } else {
+            panic!(
+                "Unexpected starting token, found {:?}",
+                &tokenizer.current_token
+            );
+        }
     }
 
     /// Does the actual parsing of the record.
@@ -51,7 +58,11 @@ impl<'a> Parser<'a> {
                     "FAM" => {
                         data.add_family(Family::parse(self, level).unwrap().with_xref(pointer))
                     }
-                    "INDI" => data.add_individual(self.parse_individual(level, pointer)),
+                    "INDI" => {
+                        let mut individual = Individual::parse(self, level).unwrap();
+                        individual.xref = pointer;
+                        data.add_individual(individual);
+                    }
                     "REPO" => data.add_repository(self.parse_repository(level, pointer)),
                     "SOUR" => data.add_source(self.parse_source(level, pointer)),
                     "SUBM" => data.add_submitter(self.parse_submitter(level, pointer)),
@@ -105,50 +116,6 @@ impl<'a> Parser<'a> {
             }
         }
         submitter
-    }
-
-    /// Parses INDI top-level tag
-    fn parse_individual(&mut self, level: u8, xref: Option<String>) -> Individual {
-        // skip over INDI tag name
-        self.tokenizer.next_token();
-        let mut individual = Individual::new(xref);
-
-        while self.tokenizer.current_token != Token::Level(level) {
-            match &self.tokenizer.current_token {
-                Token::Tag(tag) => match tag.as_str() {
-                    "NAME" => individual.name = Some(self.parse_name(level + 1)),
-                    "SEX" => individual.sex = self.parse_gender(),
-                    "ADOP" | "BIRT" | "BAPM" | "BARM" | "BASM" | "BLES" | "BURI" | "CENS"
-                    | "CHR" | "CHRA" | "CONF" | "CREM" | "DEAT" | "EMIG" | "FCOM" | "GRAD"
-                    | "IMMI" | "NATU" | "ORDN" | "RETI" | "RESI" | "PROB" | "WILL" | "EVEN" => {
-                        individual.add_event(self.parse_event(level + 1));
-                    }
-                    "FAMC" | "FAMS" => {
-                        let tag_clone = tag.clone();
-                        individual
-                            .add_family(self.parse_family_link(tag_clone.as_str(), level + 1));
-                    }
-                    "CHAN" => {
-                        // assuming it always only has a single DATE subtag
-                        self.tokenizer.next_token(); // level
-                        self.tokenizer.next_token(); // DATE tag
-                        individual.last_updated = Some(self.take_line_value());
-                    }
-                    _ => self.skip_current_tag(level + 1, "Individual"),
-                },
-                Token::CustomTag(tag) => {
-                    let tag_clone = tag.clone();
-                    individual.add_custom_data(self.parse_custom_tag(tag_clone))
-                }
-                Token::Level(_) => self.tokenizer.next_token(),
-                _ => panic!(
-                    "Unhandled Individual Token: {:?}",
-                    self.tokenizer.current_token
-                ),
-            }
-        }
-
-        individual
     }
 
     fn parse_source(&mut self, level: u8, xref: Option<String>) -> Source {
@@ -215,7 +182,7 @@ impl<'a> Parser<'a> {
         repo
     }
 
-    fn parse_custom_tag(&mut self, tag: String) -> CustomData {
+    pub(crate) fn parse_custom_tag(&mut self, tag: String) -> CustomData {
         let value = self.take_line_value();
         CustomData { tag, value }
     }
@@ -247,29 +214,6 @@ impl<'a> Parser<'a> {
         header
     }
 
-    fn parse_family_link(&mut self, tag: &str, level: u8) -> FamilyLink {
-        let xref = self.take_line_value();
-        let mut link = FamilyLink::new(xref, tag);
-
-        loop {
-            if let Token::Level(cur_level) = self.tokenizer.current_token {
-                if cur_level <= level {
-                    break;
-                }
-            }
-            match &self.tokenizer.current_token {
-                Token::Tag(tag) => match tag.as_str() {
-                    "PEDI" => link.set_pedigree(self.take_line_value().as_str()),
-                    _ => self.skip_current_tag(level + 1, "FamilyLink"),
-                },
-                Token::Level(_) => self.tokenizer.next_token(),
-                _ => self.handle_unexpected_token(level + 1, "FamilyLink"),
-            }
-        }
-
-        link
-    }
-
     fn parse_repo_citation(&mut self, level: u8) -> RepoCitation {
         let xref = self.take_line_value();
         let mut citation = RepoCitation {
@@ -295,65 +239,6 @@ impl<'a> Parser<'a> {
             }
         }
         citation
-    }
-
-    fn parse_gender(&mut self) -> Gender {
-        self.tokenizer.next_token();
-        let gender: Gender;
-        if let Token::LineValue(gender_string) = &self.tokenizer.current_token {
-            gender = match gender_string.as_str() {
-                "M" => Gender::Male,
-                "F" => Gender::Female,
-                "N" => Gender::Nonbinary,
-                "U" => Gender::Unknown,
-                _ => panic!("{} Unknown gender value {}", self.dbg(), gender_string),
-            };
-        } else {
-            panic!(
-                "Expected gender LineValue, found {:?}",
-                self.tokenizer.current_token
-            );
-        }
-        self.tokenizer.next_token();
-        gender
-    }
-
-    fn parse_name(&mut self, level: u8) -> Name {
-        let mut name = Name::default();
-        name.value = Some(self.take_line_value());
-        let mut cur_level = level;
-
-        loop {
-            if let Token::Level(new_level) = self.tokenizer.current_token {
-                if new_level <= cur_level {
-                    break;
-                }
-            }
-            match &self.tokenizer.current_token {
-                Token::Tag(tag) => match tag.as_str() {
-                    "GIVN" => name.given = Some(self.take_line_value()),
-                    "NPFX" => name.prefix = Some(self.take_line_value()),
-                    "NSFX" => name.suffix = Some(self.take_line_value()),
-                    "SPFX" => name.surname_prefix = Some(self.take_line_value()),
-                    "SURN" => name.surname = Some(self.take_line_value()),
-                    _ => self.skip_current_tag(cur_level, "Name"),
-                },
-                Token::Level(_) => {
-                    cur_level += 1;
-                    self.tokenizer.next_token()
-                }
-                _ => panic!("Unhandled Name Token: {:?}", self.tokenizer.current_token),
-            }
-        }
-
-        name
-    }
-
-    fn parse_event(&mut self, level: u8) -> Event {
-        match Event::parse(self, level) {
-            Ok(event) => event,
-            Err(e) => panic!("event parsing fail: {:?}", e),
-        }
     }
 
     /// Parses ADDR tag
@@ -405,10 +290,7 @@ impl<'a> Parser<'a> {
                         value.push('\n');
                         value.push_str(&self.take_line_value())
                     }
-                    "CONC" => {
-                        value.push(' ');
-                        value.push_str(&self.take_line_value())
-                    }
+                    "CONC" => value.push_str(&self.take_line_value()),
                     _ => panic!("{} Unhandled Continuation Tag: {}", self.dbg(), tag),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
@@ -440,17 +322,18 @@ impl<'a> Parser<'a> {
         value
     }
 
-    pub(crate) fn skip_current_tag(&mut self, level: u8, parent_name: &str) {
+    pub(crate) fn take_tag(&mut self) -> &str {
         if let Token::Tag(tag) = &self.tokenizer.current_token {
-            println!(
-                "{} Unhandled {} Tag: {}",
-                self.dbg_lvl(level),
-                parent_name,
-                tag
-            );
+            tag
         } else {
-            panic!("Expected tag, found {:?}", &self.tokenizer.current_token);
+            panic!("Expected tag, found {:?}", &self.tokenizer.current_token)
         }
+    }
+
+    pub(crate) fn skip_current_tag(&mut self, level: u8, parent_name: &str) {
+        let dbg = self.dbg_lvl(level);
+        let tag = self.take_tag();
+        println!("{} Unhandled {} Tag: {}", dbg, parent_name, tag);
         self.skip_block(level);
     }
 

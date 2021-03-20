@@ -27,11 +27,11 @@ pub mod tokenizer;
 pub mod types;
 
 mod tree;
-pub use tree::Gedcom as GedcomData;
+pub use tree::Gedcom;
 
 #[must_use]
 /// Helper function for converting GEDCOM file content stream to parsed data.
-pub fn parse(content: std::str::Chars) -> GedcomData {
+pub fn parse(content: std::str::Chars) -> Gedcom {
     let mut p = parser::Parser::new(content);
     p.parse_record()
 }
