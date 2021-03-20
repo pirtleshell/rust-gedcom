@@ -128,15 +128,7 @@ impl Event {
 impl Parsable<Event> for Event {
     fn parse(parser: &mut Parser, level: u8) -> Result<Event, ParsingError> {
         // extract current tag name to determine event type.
-        let event_tag_token = parser.tokenizer.take_token();
-        let tag: &str = if let Token::Tag(t) = &event_tag_token {
-            t.as_str().clone()
-        } else {
-            panic!(
-                "Expected event tag, found {:?}",
-                &parser.tokenizer.current_token
-            );
-        };
+        let tag: &str = parser.take_tag();
 
         // Events begin with either EVEN <type>, or a type tag.
         let type_tag: &str = if tag == "EVEN" {

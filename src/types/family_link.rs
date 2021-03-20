@@ -50,7 +50,6 @@ impl FamilyLink {
 
 impl Parsable<FamilyLink> for FamilyLink {
     fn parse(parser: &mut Parser, level: u8) -> Result<FamilyLink, ParsingError> {
-        // TODO: parser.take_tag()
         let tag = parser.take_tag();
         let relation = match tag {
             "FAMC" => Relation::Child,

@@ -77,10 +77,7 @@ impl Parsable<Individual> for Individual {
                     }
                     _ => parser.skip_current_tag(level + 1, "Individual"),
                 },
-                Token::CustomTag(tag) => {
-                    let tag_clone = tag.clone();
-                    individual.add_custom_data(parser.parse_custom_tag(tag_clone))
-                }
+                Token::CustomTag(_) => individual.add_custom_data(parser.parse_custom_tag()),
                 Token::Level(_) => parser.tokenizer.next_token(),
                 _ => panic!(
                     "Unhandled Individual Token: {:?}",

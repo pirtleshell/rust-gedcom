@@ -72,10 +72,8 @@ impl<'a> Parser<'a> {
                         self.skip_block(level)
                     }
                 };
-            } else if let Token::CustomTag(tag) = &self.tokenizer.current_token {
-                // TODO
-                let tag_clone = tag.clone();
-                let custom_data = self.parse_custom_tag(tag_clone);
+            } else if let Token::CustomTag(_) = &self.tokenizer.current_token {
+                let custom_data = self.parse_custom_tag();
                 println!(
                     "{} Skipping top-level custom tag: {:?}",
                     self.dbg(),
@@ -133,12 +131,13 @@ impl<'a> Parser<'a> {
                 Token::Tag(tag) => match tag.as_str() {
                     "DATA" => self.tokenizer.next_token(),
                     // TODO: cleanup to just use parse_event
-                    // "EVEN" => {
-                    //     let events_recorded = self.take_line_value();
-                    //     let mut event = self.parse_event(level + 2);
-                    //     event.with_source_data(events_recorded);
-                    //     source.data.add_event(event);
-                    // }
+                    "EVEN" => {
+                        panic!("{}, here!", self.dbg_lvl(level + 1));
+                        // let events_recorded = self.take_line_value();
+                        // let mut event = self.parse_event(level + 2);
+                        // event.with_source_data(events_recorded);
+                        // source.data.add_event(event);
+                    }
                     "AGNC" => source.data.agency = Some(self.take_line_value()),
                     "ABBR" => source.abbreviation = Some(self.take_continued_text(level + 1)),
                     "TITL" => source.title = Some(self.take_continued_text(level + 1)),
@@ -182,8 +181,9 @@ impl<'a> Parser<'a> {
         repo
     }
 
-    pub(crate) fn parse_custom_tag(&mut self, tag: String) -> CustomData {
-        let value = self.take_line_value();
+    pub(crate) fn parse_custom_tag(&mut self) -> CustomData {
+        let tag: String = self.take_tag().into();
+        let value: String = self.take_line_value();
         CustomData { tag, value }
     }
 
@@ -323,10 +323,9 @@ impl<'a> Parser<'a> {
     }
 
     pub(crate) fn take_tag(&mut self) -> &str {
-        if let Token::Tag(tag) = &self.tokenizer.current_token {
-            tag
-        } else {
-            panic!("Expected tag, found {:?}", &self.tokenizer.current_token)
+        match &self.tokenizer.current_token {
+            Token::Tag(tag) | Token::CustomTag(tag) => tag,
+            _ => panic!("Expected tag, found {:?}", &self.tokenizer.current_token),
         }
     }
 
