@@ -449,6 +449,14 @@ impl<'a> Parser<'a> {
                     _ => self.skip_current_tag(level + 1, "Event"),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
+                // some events are also bool like w/ Y values, apparently?
+                Token::LineValue(v) => {
+                    if v.as_str() != "Y" {
+                        panic!("{} Surprise value {} as event value", self.dbg(), v);
+                    }
+                    // just skip Y's
+                    self.tokenizer.next_token();
+                }
                 _ => panic!("Unhandled Event Token: {:?}", self.tokenizer.current_token),
             }
         }
