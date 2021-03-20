@@ -1,4 +1,4 @@
-use crate::types::{event::HasEvents, CustomData, Event};
+use crate::types::{event::HasEvents, CustomData, Event, FamilyLink};
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
 
@@ -67,48 +67,6 @@ pub enum Gender {
     // come at me LDS, i support "N" as a gender value
     Nonbinary,
     Unknown,
-}
-
-#[derive(Debug)]
-#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-enum FamilyLinkType {
-    Spouse,
-    Child,
-}
-
-#[derive(Debug)]
-#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-enum Pedigree {
-    Adopted,
-    Birth,
-    Foster,
-    Sealing,
-}
-
-#[derive(Debug)]
-#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-pub struct FamilyLink(Xref, FamilyLinkType, Option<Pedigree>);
-
-impl FamilyLink {
-    #[must_use]
-    pub fn new(xref: Xref, tag: &str) -> FamilyLink {
-        let link_type = match tag {
-            "FAMC" => FamilyLinkType::Child,
-            "FAMS" => FamilyLinkType::Spouse,
-            _ => panic!("Unrecognized family type tag: {}", tag),
-        };
-        FamilyLink(xref, link_type, None)
-    }
-
-    pub fn set_pedigree(&mut self, pedigree_text: &str) {
-        self.2 = match pedigree_text.to_lowercase().as_str() {
-            "adopted" => Some(Pedigree::Adopted),
-            "birth" => Some(Pedigree::Birth),
-            "foster" => Some(Pedigree::Foster),
-            "sealing" => Some(Pedigree::Sealing),
-            _ => panic!("Unrecognized family link pedigree: {}", pedigree_text),
-        };
-    }
 }
 
 #[derive(Debug, Default, PartialEq)]

@@ -25,6 +25,9 @@ pub use individual::*;
 mod family;
 pub use family::*;
 
+mod family_link;
+pub use family_link::FamilyLink;
+
 mod submitter;
 pub use submitter::*;
 
