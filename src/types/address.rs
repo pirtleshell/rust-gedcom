@@ -73,7 +73,7 @@ impl Parsable<Address> for Address {
                     "POST" => address.post = Some(parser.take_line_value()),
                     "CTRY" => address.country = Some(parser.take_line_value()),
                     // TODO ParsingError
-                    _ => parser.skip_current_tag(parser.level, "Address"),
+                    _ => parser.skip_current_tag("Address"),
                 },
                 Token::Level(_) => parser.set_level(),
                 _ => panic!(

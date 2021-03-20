@@ -123,10 +123,10 @@ impl<'a> Parser<'a> {
                         submitter.address = Some(Address::parse(self).unwrap());
                     }
                     "PHON" => submitter.phone = Some(self.take_line_value()),
-                    _ => self.skip_current_tag(self.level, "Submitter"),
+                    _ => self.skip_current_tag("Submitter"),
                 },
                 Token::Level(_) => self.set_level(),
-                _ => self.handle_unexpected_token(self.level, "SUBM"),
+                _ => self.handle_unexpected_token("SUBM"),
             }
         }
         submitter
@@ -153,10 +153,10 @@ impl<'a> Parser<'a> {
                     "ABBR" => source.abbreviation = Some(self.take_continued_text(self.level)),
                     "TITL" => source.title = Some(self.take_continued_text(self.level)),
                     "REPO" => source.add_repo_citation(self.parse_repo_citation(self.level)),
-                    _ => self.skip_current_tag(self.level, "Source"),
+                    _ => self.skip_current_tag("Source"),
                 },
                 Token::Level(_) => self.set_level(),
-                _ => self.handle_unexpected_token(self.level, "SOUR"),
+                _ => self.handle_unexpected_token("SOUR"),
             }
         }
 
@@ -183,10 +183,10 @@ impl<'a> Parser<'a> {
                 Token::Tag(tag) => match tag.as_str() {
                     "NAME" => repo.name = Some(self.take_line_value()),
                     "ADDR" => repo.address = Some(Address::parse(self).unwrap()),
-                    _ => self.skip_current_tag(self.level, "Repository"),
+                    _ => self.skip_current_tag("Repository"),
                 },
                 Token::Level(_) => self.set_level(),
-                _ => self.handle_unexpected_token(self.level, "REPO"),
+                _ => self.handle_unexpected_token("REPO"),
             }
         }
 
@@ -220,7 +220,7 @@ impl<'a> Parser<'a> {
                     _ => panic!("{} Unhandled GEDC Tag: {}", self.dbg(), tag),
                 },
                 Token::Level(_) => self.set_level(),
-                _ => self.handle_unexpected_token(2, "GEDC"),
+                _ => self.handle_unexpected_token("GEDC"),
             }
         }
         header
@@ -268,10 +268,10 @@ impl<'a> Parser<'a> {
             match &self.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
                     "PAGE" => citation.page = Some(self.take_line_value()),
-                    _ => self.skip_current_tag(level + 1, "Citation"),
+                    _ => self.skip_current_tag("Citation"),
                 },
                 Token::Level(_) => self.set_level(),
-                _ => self.handle_unexpected_token(level + 1, "Citation"),
+                _ => self.handle_unexpected_token("Citation"),
             }
         }
         citation
@@ -333,14 +333,14 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(crate) fn skip_current_tag(&mut self, level: u8, parent_name: &str) {
+    pub(crate) fn skip_current_tag(&mut self, parent_name: &str) {
         let dbg = self.dbg();
         let tag = self.take_tag();
         println!("{} Unhandled {} Tag: {}", dbg, parent_name, tag);
         self.skip_block();
     }
 
-    pub(crate) fn handle_unexpected_token(&mut self, level: u8, base_tag: &str) {
+    pub(crate) fn handle_unexpected_token(&mut self, base_tag: &str) {
         println!(
             "{} Unhandled {} Token: {:?}",
             self.dbg(),

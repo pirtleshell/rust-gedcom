@@ -165,7 +165,7 @@ impl Parsable<Event> for Event {
                     "PLAC" => event.place = Some(parser.take_line_value()),
                     // TODO Citation::parse
                     "SOUR" => event.add_citation(parser.parse_citation(parser.level)),
-                    _ => parser.skip_current_tag(parser.level, "Event"),
+                    _ => parser.skip_current_tag("Event"),
                 },
                 Token::Level(_) => parser.set_level(),
                 Token::LineValue(v) => {
@@ -185,7 +185,7 @@ impl Parsable<Event> for Event {
                         parser.tokenizer.next_token();
                     }
                 }
-                _ => parser.handle_unexpected_token(parser.level, "Event"),
+                _ => parser.handle_unexpected_token("Event"),
             }
         }
 

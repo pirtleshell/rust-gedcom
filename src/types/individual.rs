@@ -74,7 +74,7 @@ impl Parsable<Individual> for Individual {
                         parser.tokenizer.next_token(); // DATE tag
                         individual.last_updated = Some(parser.take_line_value());
                     }
-                    _ => parser.skip_current_tag(parser.level, "Individual"),
+                    _ => parser.skip_current_tag("Individual"),
                 },
                 Token::CustomTag(_) => individual.add_custom_data(parser.parse_custom_tag()),
                 Token::Level(_) => parser.set_level(),
@@ -160,7 +160,7 @@ impl Parsable<Name> for Name {
                     "NSFX" => name.suffix = Some(parser.take_line_value()),
                     "SPFX" => name.surname_prefix = Some(parser.take_line_value()),
                     "SURN" => name.surname = Some(parser.take_line_value()),
-                    _ => parser.skip_current_tag(parser.level, "Name"),
+                    _ => parser.skip_current_tag("Name"),
                 },
                 Token::Level(_) => parser.set_level(),
                 _ => panic!("Unhandled Name Token: {:?}", parser.tokenizer.current_token),

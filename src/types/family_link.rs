@@ -68,10 +68,10 @@ impl Parsable<FamilyLink> for FamilyLink {
             match &parser.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
                     "PEDI" => link.set_pedigree(parser.take_line_value().as_str()),
-                    _ => parser.skip_current_tag(parser.level, "FamilyLink"),
+                    _ => parser.skip_current_tag("FamilyLink"),
                 },
                 Token::Level(_) => parser.set_level(),
-                _ => parser.handle_unexpected_token(parser.level, "FamilyLink"),
+                _ => parser.handle_unexpected_token("FamilyLink"),
             }
         }
 

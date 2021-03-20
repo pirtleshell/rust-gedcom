@@ -86,10 +86,10 @@ impl Parsable<Header> for Header {
                             parser.tokenizer.next_token();
                         }
                     }
-                    _ => parser.skip_current_tag(1, "Header"),
+                    _ => parser.skip_current_tag("Header"),
                 },
                 Token::Level(_) => parser.set_level(),
-                _ => parser.handle_unexpected_token(1, "HEAD"),
+                _ => parser.handle_unexpected_token("HEAD"),
             }
         }
 

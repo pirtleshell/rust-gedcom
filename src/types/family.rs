@@ -74,10 +74,10 @@ impl Parsable<Family> for Family {
                     "HUSB" => family.set_individual1(parser.take_line_value()),
                     "WIFE" => family.set_individual2(parser.take_line_value()),
                     "CHIL" => family.add_child(parser.take_line_value()),
-                    _ => parser.skip_current_tag(parser.level, "Family"),
+                    _ => parser.skip_current_tag("Family"),
                 },
                 Token::Level(_) => parser.set_level(),
-                _ => parser.handle_unexpected_token(parser.level, "FAM"),
+                _ => parser.handle_unexpected_token("FAM"),
             }
         }
 
