@@ -4,8 +4,8 @@ use std::{panic, str::Chars};
 use crate::tokenizer::{Token, Tokenizer};
 use crate::tree::GedcomData;
 use crate::types::{
-    event::HasEvents, Address, CustomData, Event, EventType, Family, FamilyLink, Gender, Header,
-    Individual, Name, RepoCitation, Repository, Source, SourceCitation, Submitter,
+    event::HasEvents, Address, CustomData, Event, Family, FamilyLink, Gender, Header, Individual,
+    Name, RepoCitation, Repository, Source, SourceCitation, Submitter,
 };
 
 /// The Gedcom parser that converts the token list into a data structure
@@ -217,10 +217,10 @@ impl<'a> Parser<'a> {
                     "HUSB" => family.set_individual1(self.take_line_value()),
                     "WIFE" => family.set_individual2(self.take_line_value()),
                     "CHIL" => family.add_child(self.take_line_value()),
-                    _ => panic!("{} Unhandled Family Tag: {}", self.dbg(), tag),
+                    _ => self.skip_current_tag(level + 1, "Family"),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
-                _ => panic!("Unhandled Family Token: {:?}", self.tokenizer.current_token),
+                _ => self.handle_unexpected_token(level + 1, "FAM"),
             }
         }
 
@@ -242,6 +242,7 @@ impl<'a> Parser<'a> {
             match &self.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
                     "DATA" => self.tokenizer.next_token(),
+                    // TODO: cleanup to just use parse_event
                     "EVEN" => {
                         let events_recorded = self.take_line_value();
                         let mut event = self.parse_event("OTHER", level + 2);
@@ -252,10 +253,10 @@ impl<'a> Parser<'a> {
                     "ABBR" => source.abbreviation = Some(self.take_continued_text(level + 1)),
                     "TITL" => source.title = Some(self.take_continued_text(level + 1)),
                     "REPO" => source.add_repo_citation(self.parse_repo_citation(level + 1)),
-                    _ => panic!("{} Unhandled Source Tag: {}", self.dbg(), tag),
+                    _ => self.skip_current_tag(level + 1, "Source"),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
-                _ => panic!("Unhandled Source Token: {:?}", self.tokenizer.current_token),
+                _ => self.handle_unexpected_token(level + 1, "SOUR"),
             }
         }
 
@@ -340,7 +341,7 @@ impl<'a> Parser<'a> {
             match &self.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
                     "PEDI" => link.set_pedigree(self.take_line_value().as_str()),
-                    _ => panic!("{} Unhandled FamilyLink Tag: {}", self.dbg(), tag),
+                    _ => self.skip_current_tag(level + 1, "FamilyLink"),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
                 _ => panic!(
@@ -461,10 +462,7 @@ impl<'a> Parser<'a> {
                 Token::Tag(tag) => match tag.as_str() {
                     "DATE" => event.date = Some(self.take_line_value()),
                     "PLAC" => event.place = Some(self.take_line_value()),
-                    "TYPE" => {
-                        let type_tag = self.take_line_value();
-                        event.event = EventType::SourceData(type_tag);
-                    }
+                    "TYPE" => event.with_source_data(self.take_line_value()),
                     "SOUR" => event.add_citation(self.parse_citation(level + 1)),
                     _ => self.skip_current_tag(level + 1, "Event"),
                 },
