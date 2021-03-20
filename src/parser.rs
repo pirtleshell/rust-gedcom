@@ -84,7 +84,7 @@ impl<'a> Parser<'a> {
                     "TRLR" => break,
                     _ => {
                         println!("{} Unhandled top-level data {}", self.dbg(), tag);
-                        self.skip_block(self.level)
+                        self.skip_block()
                     }
                 };
             } else if let Token::CustomTag(_) = &self.tokenizer.current_token {
@@ -94,7 +94,7 @@ impl<'a> Parser<'a> {
                     self.dbg(),
                     custom_data
                 );
-                self.skip_block(self.level);
+                self.skip_block();
             } else {
                 println!(
                     "{} Unhandled token {:?}",
@@ -334,26 +334,27 @@ impl<'a> Parser<'a> {
     }
 
     pub(crate) fn skip_current_tag(&mut self, level: u8, parent_name: &str) {
-        let dbg = self.dbg_lvl(level);
+        let dbg = self.dbg();
         let tag = self.take_tag();
         println!("{} Unhandled {} Tag: {}", dbg, parent_name, tag);
-        self.skip_block(level);
+        self.skip_block();
     }
 
     pub(crate) fn handle_unexpected_token(&mut self, level: u8, base_tag: &str) {
         println!(
             "{} Unhandled {} Token: {:?}",
-            self.dbg_lvl(level),
+            self.dbg(),
             base_tag,
             &self.tokenizer.current_token
         );
-        self.skip_block(level);
+        self.skip_block();
     }
 
-    pub(crate) fn skip_block(&mut self, level: u8) {
+    pub(crate) fn skip_block(&mut self) {
+        let block_level = self.level;
         loop {
             if let Token::Level(cur_level) = self.tokenizer.current_token {
-                if cur_level <= level {
+                if cur_level <= block_level {
                     break;
                 }
             }
@@ -361,13 +362,9 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn dbg_lvl(&self, level: u8) -> String {
-        format!("line {}, level {}:", self.tokenizer.line, level)
-    }
-
     /// Debug function displaying GEDCOM line number of error message.
     pub(crate) fn dbg(&self) -> String {
-        format!("line {}:", &self.tokenizer.line)
+        format!("line {}, level {} :", &self.tokenizer.line, &self.level)
     }
 }
 
