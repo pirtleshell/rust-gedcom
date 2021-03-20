@@ -53,8 +53,8 @@ impl<'a> Parser<'a> {
                     "SUBM" => data.add_submitter(self.parse_submitter(level, pointer)),
                     "TRLR" => break,
                     _ => {
-                        println!("{} Unhandled tag {}", self.dbg(), tag);
-                        self.tokenizer.next_token();
+                        println!("{} Unhandled top-level data {}", self.dbg(), tag);
+                        self.skip_block(level)
                     }
                 };
             } else if let Token::CustomTag(tag) = &self.tokenizer.current_token {
@@ -66,9 +66,7 @@ impl<'a> Parser<'a> {
                     self.dbg(),
                     custom_data
                 );
-                while self.tokenizer.current_token != Token::Level(0) {
-                    self.tokenizer.next_token();
-                }
+                self.skip_block(level);
             } else {
                 println!(
                     "{} Unhandled token {:?}",
@@ -200,7 +198,7 @@ impl<'a> Parser<'a> {
                 ),
             }
         }
-        // println!("found individual:\n{:#?}", individual);
+
         individual
     }
 
@@ -224,7 +222,6 @@ impl<'a> Parser<'a> {
             }
         }
 
-        // println!("found family:\n{:#?}", family);
         family
     }
 
@@ -260,7 +257,6 @@ impl<'a> Parser<'a> {
             }
         }
 
-        // println!("found source:\n{:#?}", source);
         source
     }
 
@@ -283,16 +279,13 @@ impl<'a> Parser<'a> {
                 Token::Tag(tag) => match tag.as_str() {
                     "NAME" => repo.name = Some(self.take_line_value()),
                     "ADDR" => repo.address = Some(self.parse_address(level + 1)),
-                    _ => panic!("{} Unhandled Repository Tag: {}", self.dbg(), tag),
+                    _ => self.skip_current_tag(level + 1, "Repository"),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
-                _ => panic!(
-                    "Unhandled Repository Token: {:?}",
-                    self.tokenizer.current_token
-                ),
+                _ => self.handle_unexpected_token(level + 1, "REPO"),
             }
         }
-        // println!("found repositiory:\n{:#?}", repo);
+
         repo
     }
 
@@ -344,10 +337,7 @@ impl<'a> Parser<'a> {
                     _ => self.skip_current_tag(level + 1, "FamilyLink"),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
-                _ => panic!(
-                    "Unhandled FamilyLink Token: {:?}",
-                    self.tokenizer.current_token
-                ),
+                _ => self.handle_unexpected_token(level + 1, "FamilyLink"),
             }
         }
 
@@ -447,7 +437,6 @@ impl<'a> Parser<'a> {
             tag
         };
 
-        println!("Event type: {}", &type_tag);
         let mut event = Event::from_tag(&type_tag);
 
         self.tokenizer.next_token();
@@ -467,7 +456,7 @@ impl<'a> Parser<'a> {
                     _ => self.skip_current_tag(level + 1, "Event"),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
-                // some events are also bool like w/ Y values, apparently?
+                // some events are also bool-like w/ Y values, apparently?
                 Token::LineValue(v) => {
                     if v.as_str() != "Y" {
                         panic!("{} Surprise value {} as event value", self.dbg(), v);
@@ -475,7 +464,7 @@ impl<'a> Parser<'a> {
                     // just skip Y's
                     self.tokenizer.next_token();
                 }
-                _ => panic!("Unhandled Event Token: {:?}", &self.tokenizer.current_token),
+                _ => self.handle_unexpected_token(level + 1, "Event"),
             }
         }
         event

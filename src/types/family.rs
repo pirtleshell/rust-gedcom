@@ -53,12 +53,6 @@ impl Family {
 
 impl HasEvents for Family {
     fn add_event(&mut self, event: Event) -> () {
-        let event_type = &event.event;
-        for e in &self.events {
-            if &e.event == event_type {
-                panic!("Family already has a {:?} event", e.event);
-            }
-        }
         self.events.push(event);
     }
     fn events(&self) -> Vec<Event> {
