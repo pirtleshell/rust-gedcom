@@ -43,40 +43,43 @@ impl<'a> Parser<'a> {
                 self.tokenizer.next_token();
             }
 
-            if let Token::Tag(tag) = &self.tokenizer.current_token {
-                match tag.as_str() {
-                    "HEAD" => data.header = self.parse_header(),
-                    "FAM" => data.add_family(self.parse_family(level, pointer)),
-                    "INDI" => data.add_individual(self.parse_individual(level, pointer)),
-                    "REPO" => data.add_repository(self.parse_repository(level, pointer)),
-                    "SOUR" => data.add_source(self.parse_source(level, pointer)),
-                    "SUBM" => data.add_submitter(self.parse_submitter(level, pointer)),
-                    "TRLR" => break,
-                    _ => {
-                        println!("{} Unhandled tag {}", self.dbg(), tag);
+            match &self.tokenizer.current_token {
+                Token::Tag(tag) => {
+                    match tag.as_str() {
+                        "HEAD" => data.header = self.parse_header(),
+                        "FAM" => data.add_family(self.parse_family(level, pointer)),
+                        "INDI" => data.add_individual(self.parse_individual(level, pointer)),
+                        "REPO" => data.add_repository(self.parse_repository(level, pointer)),
+                        "SOUR" => data.add_source(self.parse_source(level, pointer)),
+                        "SUBM" => data.add_submitter(self.parse_submitter(level, pointer)),
+                        "TRLR" => break,
+                        _ => {
+                            println!("{} Unhandled tag {}", self.dbg(), tag);
+                            self.tokenizer.next_token();
+                        }
+                    };
+                }
+                Token::CustomTag(tag) => {
+                    let tag_clone = tag.clone();
+                    let custom_data = self.parse_custom_tag(tag_clone);
+                    println!(
+                        "{} Skipping top-level custom tag: {:?}",
+                        self.dbg(),
+                        custom_data
+                    );
+                    while self.tokenizer.current_token != Token::Level(0) {
                         self.tokenizer.next_token();
                     }
-                };
-            } else if let Token::CustomTag(tag) = &self.tokenizer.current_token {
-                // TODO
-                let tag_clone = tag.clone();
-                let custom_data = self.parse_custom_tag(tag_clone);
-                println!(
-                    "{} Skipping top-level custom tag: {:?}",
-                    self.dbg(),
-                    custom_data
-                );
-                while self.tokenizer.current_token != Token::Level(0) {
+                }
+                _ => {
+                    println!(
+                        "{} Unhandled token {:?}",
+                        self.dbg(),
+                        self.tokenizer.current_token
+                    );
                     self.tokenizer.next_token();
                 }
-            } else {
-                println!(
-                    "{} Unhandled token {:?}",
-                    self.dbg(),
-                    self.tokenizer.current_token
-                );
-                self.tokenizer.next_token();
-            };
+            }
         }
 
         data
