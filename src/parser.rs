@@ -86,7 +86,6 @@ impl<'a> Parser<'a> {
 
         // just skipping the header for now
         while self.tokenizer.current_token != Token::Level(0) {
-            println!("{}: {:?}", self.dbg(), &self.tokenizer.current_token);
             match &self.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
                     // TODO: CHAR.VERS
@@ -301,7 +300,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a custom tag to a `CustomData` struct
     fn parse_custom_tag(&mut self, tag: String) -> CustomData {
-        let value = self.take_line_value();
+        let value = self.maybe_line_value();
         CustomData { tag, value }
     }
 
@@ -329,8 +328,6 @@ impl<'a> Parser<'a> {
         self.tokenizer.next_token();
 
         while self.tokenizer.current_token != Token::Level(1) {
-            println!("{}: {:?}", self.dbg(), &self.tokenizer.current_token);
-
             match &self.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
                     "VERS" => header.gedcom_version = Some(self.take_line_value()),
@@ -595,19 +592,28 @@ impl<'a> Parser<'a> {
 
     /// Grabs and returns to the end of the current line as a String
     fn take_line_value(&mut self) -> String {
-        let value: String;
-        self.tokenizer.next_token();
-
-        if let Token::LineValue(val) = &self.tokenizer.current_token {
-            value = val.to_string();
-        } else {
-            panic!(
+        let value = match self.maybe_line_value() {
+            Some(val) => val,
+            None => panic!(
                 "{} Expected LineValue, found {:?}",
                 self.dbg(),
                 self.tokenizer.current_token
-            );
-        }
+            ),
+        };
+        value
+    }
+
+    /// Grabs and returns to the end of the current line as a String, if present
+    fn maybe_line_value(&mut self) -> Option<String> {
         self.tokenizer.next_token();
+        let value = if let Token::LineValue(val) = &self.tokenizer.current_token {
+            Some(val.to_string())
+        } else {
+            None
+        };
+        if value != None {
+            self.tokenizer.next_token();
+        }
         value
     }
 

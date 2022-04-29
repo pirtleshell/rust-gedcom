@@ -55,6 +55,11 @@ impl<'a> Tokenizer<'a> {
 
     /// Loads the next token into state
     pub fn next_token(&mut self) {
+        self.get_next_token();
+        // println!("Line {}: {:?}", self.line, self.current_token);
+    }
+
+    fn get_next_token(&mut self) {
         if self.current_char == '\0' {
             self.current_token = Token::EOF;
             return;

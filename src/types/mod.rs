@@ -73,5 +73,6 @@ pub struct RepoCitation {
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct CustomData {
     pub tag: String,
-    pub value: String,
+    // TODO: this can sometimes be empty b/c there are deeper levels.
+    pub value: Option<String>,
 }
