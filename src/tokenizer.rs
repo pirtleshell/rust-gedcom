@@ -29,14 +29,14 @@ pub struct Tokenizer<'a> {
     pub current_token: Token,
     /// Current character tokenizer is parsing
     current_char: char,
-    /// An iterator of charaters of the Gedcom file contents
+    /// An iterator of characters of the Gedcom file contents
     chars: Chars<'a>,
     /// The current line number of the file we are parsing
     pub line: u32,
 }
 
 impl<'a> Tokenizer<'a> {
-    /// Creates a new tokenizer for a char interator of gedcom file contents
+    /// Creates a new tokenizer for a char iterator of gedcom file contents
     #[must_use]
     pub fn new(chars: Chars<'a>) -> Tokenizer {
         Tokenizer {

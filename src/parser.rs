@@ -61,15 +61,7 @@ impl<'a> Parser<'a> {
                 }
                 Token::CustomTag(tag) => {
                     let tag_clone = tag.clone();
-                    let custom_data = self.parse_custom_tag(tag_clone);
-                    println!(
-                        "{} Skipping top-level custom tag: {:?}",
-                        self.dbg(),
-                        custom_data
-                    );
-                    while self.tokenizer.current_token != Token::Level(0) {
-                        self.tokenizer.next_token();
-                    }
+                    self.skip_custom_tag(tag_clone, 0, "top-level");
                 }
                 _ => {
                     println!(
@@ -94,6 +86,7 @@ impl<'a> Parser<'a> {
 
         // just skipping the header for now
         while self.tokenizer.current_token != Token::Level(0) {
+            println!("{}: {:?}", self.dbg(), &self.tokenizer.current_token);
             match &self.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
                     // TODO: CHAR.VERS
@@ -132,6 +125,10 @@ impl<'a> Parser<'a> {
                     }
                     _ => panic!("{} Unhandled Header Tag: {}", self.dbg(), tag),
                 },
+                Token::CustomTag(tag) => {
+                    let tag_clone = tag.clone();
+                    self.skip_custom_tag(tag_clone, 1, "header")
+                }
                 Token::Level(_) => self.tokenizer.next_token(),
                 _ => panic!("Unhandled Header Token: {:?}", self.tokenizer.current_token),
             }
@@ -298,13 +295,32 @@ impl<'a> Parser<'a> {
                 ),
             }
         }
-        // println!("found repositiory:\n{:#?}", repo);
+        // println!("found repository:\n{:#?}", repo);
         repo
     }
 
+    /// Parses a custom tag to a `CustomData` struct
     fn parse_custom_tag(&mut self, tag: String) -> CustomData {
         let value = self.take_line_value();
         CustomData { tag, value }
+    }
+
+    /// Temporary func for skipping custom tags until the library handles them.
+    fn skip_custom_tag(&mut self, tag: String, level: u8, name: &str) {
+        let custom_data = self.parse_custom_tag(tag);
+        println!(
+            "{} Skipping custom {} tag at level {}: {:?}",
+            self.dbg(),
+            name,
+            level,
+            custom_data
+        );
+        loop {
+            match self.tokenizer.current_token {
+                Token::Level(lvl) if lvl <= level => break,
+                _ => self.tokenizer.next_token(),
+            }
+        }
     }
 
     /// Handle parsing GEDC tag
@@ -313,6 +329,8 @@ impl<'a> Parser<'a> {
         self.tokenizer.next_token();
 
         while self.tokenizer.current_token != Token::Level(1) {
+            println!("{}: {:?}", self.dbg(), &self.tokenizer.current_token);
+
             match &self.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
                     "VERS" => header.gedcom_version = Some(self.take_line_value()),
@@ -328,6 +346,10 @@ impl<'a> Parser<'a> {
                     _ => panic!("{} Unhandled GEDC Tag: {}", self.dbg(), tag),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
+                Token::CustomTag(tag) => {
+                    let tag_clone = tag.clone();
+                    self.skip_custom_tag(tag_clone, 2, "GEDC")
+                }
                 _ => panic!(
                     "{} Unexpected GEDC Token: {:?}",
                     self.dbg(),
