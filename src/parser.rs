@@ -4,8 +4,9 @@ use std::{panic, str::Chars};
 use crate::tokenizer::{Token, Tokenizer};
 use crate::tree::GedcomData;
 use crate::types::{
-    event::HasEvents, Address, CustomData, Event, Family, FamilyLink, Gender, Header, Individual,
-    Name, RepoCitation, Repository, Source, SourceCitation, Submitter,
+    event::HasEvents, Address, Copyright, Corporation, CustomData, Date, Encoding, Event, Family,
+    FamilyLink, GedcomDocument, Gender, HeadPlac, HeadSourData, HeadSource, Header, Individual,
+    Name, Note, RepoCitation, Repository, Source, SourceCitation, Submitter, Translation,
 };
 
 /// The Gedcom parser that converts the token list into a data structure
@@ -82,58 +83,188 @@ impl<'a> Parser<'a> {
         data
     }
 
-    /// Parses HEAD top-level tag
+    /// Parses HEAD top-level tag. See
+    /// https://gedcom.io/specifications/FamilySearchGEDCOMv7.html#HEADER
     fn parse_header(&mut self) -> Header {
         // skip over HEAD tag name
         self.tokenizer.next_token();
 
         let mut header = Header::default();
 
-        // just skipping the header for now
         while self.tokenizer.current_token != Token::Level(0) {
             match &self.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
-                    // TODO: CHAR.VERS
-                    "CHAR" => header.encoding = Some(self.take_line_value()),
-                    "CORP" => header.corporation = Some(self.take_line_value()),
-                    "COPR" => header.copyright = Some(self.take_line_value()),
-                    "DATE" => header.date = Some(self.take_line_value()),
-                    "DEST" => header.add_destination(self.take_line_value()),
-                    "LANG" => header.language = Some(self.take_line_value()),
-                    "FILE" => header.filename = Some(self.take_line_value()),
-                    "NOTE" => header.note = Some(self.take_continued_text(1)),
-                    "SUBM" => header.submitter_tag = Some(self.take_line_value()),
-                    "SUBN" => header.submission_tag = Some(self.take_line_value()),
-                    "TIME" => {
-                        let time = self.take_line_value();
-                        // assuming subtag of DATE
-                        if let Some(date) = header.date {
-                            let mut datetime = String::new();
-                            datetime.push_str(&date);
-                            datetime.push_str(" ");
-                            datetime.push_str(&time);
-                            header.date = Some(datetime);
-                        } else {
-                            panic!("Expected TIME to be under DATE in header.");
-                        }
-                    }
                     "GEDC" => {
                         header = self.parse_gedcom_data(header);
                     }
-                    // TODO: HeaderSource
-                    "SOUR" => {
-                        println!("WARNING: Skipping header source.");
-                        while self.tokenizer.current_token != Token::Level(1) {
-                            self.tokenizer.next_token();
-                        }
-                    }
+                    "SOUR" => header.source = Some(self.parse_head_source()),
+                    "DEST" => header.destination = Some(self.take_line_value()),
+                    "DATE" => header.date = Some(self.parse_date(1)),
+                    "SUBM" => header.submitter_tag = Some(self.take_line_value()),
+                    "SUBN" => header.submission_tag = Some(self.take_line_value()),
+                    "FILE" => header.filename = Some(self.take_line_value()),
+                    "COPR" => header.copyright = Some(self.parse_copyright(1)),
+                    "CHAR" => header.encoding = Some(self.parse_encoding_data()),
+                    "LANG" => header.language = Some(self.take_line_value()),
+                    "NOTE" => header.note = Some(self.parse_note(1)),
+                    "PLAC" => header.place = Some(self.parse_head_plac()),
                     _ => panic!("{} Unhandled Header Tag: {}", self.dbg(), tag),
                 },
+                Token::CustomTag(tag) => {
+                    let tag_clone = tag.clone();
+                    header.add_custom_data(self.parse_custom_tag(tag_clone))
+                }
                 Token::Level(_) => self.tokenizer.next_token(),
-                _ => panic!("Unhandled Header Token: {:?}", self.tokenizer.current_token),
+                _ => panic!(
+                    "Unhandled Header Token: {:?}",
+                    &self.tokenizer.current_token
+                ),
             }
         }
         header
+    }
+
+    /// parse_head_source handles the SOUR tag in a header
+    fn parse_head_source(&mut self) -> HeadSource {
+        let mut sour = HeadSource::default();
+        sour.value = Some(self.take_line_value());
+
+        loop {
+            if let Token::Level(cur_level) = self.tokenizer.current_token {
+                if cur_level <= 1 {
+                    break;
+                }
+            }
+            match &self.tokenizer.current_token {
+                Token::Tag(tag) => match tag.as_str() {
+                    "VERS" => sour.version = Some(self.take_line_value()),
+                    "NAME" => sour.name = Some(self.take_line_value()),
+                    "CORP" => sour.corporation = Some(self.parse_corporation(2)),
+                    "DATA" => sour.data = Some(self.parse_head_data(2)),
+                    _ => panic!("{} Unhandled CHAR Tag: {}", self.dbg(), tag),
+                },
+                Token::Level(_) => self.tokenizer.next_token(),
+                _ => panic!("Unexpected SOUR Token: {:?}", &self.tokenizer.current_token),
+            }
+        }
+        sour
+    }
+
+    /// parse_corporation is for a CORP tag within the SOUR tag of a HEADER
+    fn parse_corporation(&mut self, level: u8) -> Corporation {
+        let mut corp = Corporation::default();
+        corp.value = Some(self.take_line_value());
+
+        loop {
+            if let Token::Level(cur_level) = self.tokenizer.current_token {
+                if cur_level <= level {
+                    break;
+                }
+            }
+            match &self.tokenizer.current_token {
+                Token::Tag(tag) => match tag.as_str() {
+                    "ADDR" => corp.address = Some(self.parse_address(level + 1)),
+                    "PHON" => corp.phone = Some(self.take_line_value()),
+                    "EMAIL" => corp.email = Some(self.take_line_value()),
+                    "FAX" => corp.fax = Some(self.take_line_value()),
+                    "WWW" => corp.website = Some(self.take_line_value()),
+                    _ => panic!("{} Unhandled CORP tag: {}", self.dbg(), tag),
+                },
+                Token::Level(_) => self.tokenizer.next_token(),
+                _ => panic!(
+                    "Unhandled CORP tag in header: {:?}",
+                    self.tokenizer.current_token
+                ),
+            }
+        }
+        corp
+    }
+
+    /// parse_head_data parses the DATA tag
+    fn parse_head_data(&mut self, level: u8) -> HeadSourData {
+        let mut data = HeadSourData::default();
+        data.value = Some(self.take_line_value());
+
+        loop {
+            if let Token::Level(cur_level) = self.tokenizer.current_token {
+                if cur_level <= level {
+                    break;
+                }
+            }
+            match &self.tokenizer.current_token {
+                Token::Tag(tag) => match tag.as_str() {
+                    "DATE" => data.date = Some(self.parse_date(level + 1)),
+                    "COPR" => data.copyright = Some(self.parse_copyright(level + 1)),
+                    _ => panic!("{} unhandled DATA tag in header: {}", self.dbg(), tag),
+                },
+                Token::Level(_) => self.tokenizer.next_token(),
+                _ => panic!(
+                    "Unhandled SOUR tag in header: {:?}",
+                    self.tokenizer.current_token
+                ),
+            }
+        }
+        data
+    }
+
+    /// parse_head_plac handles the PLAC tag when it is present in header
+    fn parse_head_plac(&mut self) -> HeadPlac {
+        let mut h_plac = HeadPlac::default();
+        // In the header, PLAC should have no payload. See
+        // https://gedcom.io/specifications/FamilySearchGEDCOMv7.html#HEAD-PLAC
+        self.tokenizer.next_token();
+        loop {
+            if let Token::Level(cur_level) = self.tokenizer.current_token {
+                if cur_level <= 1 {
+                    break;
+                }
+            }
+            match &self.tokenizer.current_token {
+                Token::Tag(tag) => match tag.as_str() {
+                    "FORM" => {
+                        let form = self.take_line_value();
+                        let jurisdictional_titles = form.split(",");
+
+                        for t in jurisdictional_titles {
+                            let v = t.trim();
+                            h_plac.push_jurisdictional_title(v.to_string());
+                        }
+                    }
+                    _ => panic!("{} Unhandled PLAC tag in header: {}", self.dbg(), tag),
+                },
+                Token::Level(_) => self.tokenizer.next_token(),
+                _ => panic!(
+                    "Unhandled PLAC tag in header: {:?}",
+                    self.tokenizer.current_token
+                ),
+            }
+        }
+
+        h_plac
+    }
+
+    /// parse_copyright handles the COPR tag
+    fn parse_copyright(&mut self, level: u8) -> Copyright {
+        let mut copyright = Copyright::default();
+        copyright.value = Some(self.take_line_value());
+
+        loop {
+            if let Token::Level(cur_level) = self.tokenizer.current_token {
+                if cur_level <= level {
+                    break;
+                }
+            }
+            match &self.tokenizer.current_token {
+                Token::Tag(tag) => match tag.as_str() {
+                    "CONT" => copyright.continued = Some(self.take_line_value()),
+                    "CONC" => copyright.continued = Some(self.take_line_value()),
+                    _ => panic!("{} unhandled COPR tag in header: {}", self.dbg(), tag),
+                },
+                Token::Level(_) => self.tokenizer.next_token(),
+                _ => panic!("Unhandled tag in COPR: {:?}", self.tokenizer.current_token),
+            }
+        }
+        copyright
     }
 
     /// Parses SUBM top-level tag
@@ -150,6 +281,8 @@ impl<'a> Parser<'a> {
                         submitter.address = Some(self.parse_address(level + 1));
                     }
                     "PHON" => submitter.phone = Some(self.take_line_value()),
+                    "LANG" => submitter.language = Some(self.take_line_value()),
+                    // "CHAN" => submitter.change_date = Some(self.take_line_value()),
                     _ => panic!("{} Unhandled Submitter Tag: {}", self.dbg(), tag),
                 },
                 Token::Level(_) => self.tokenizer.next_token(),
@@ -304,15 +437,132 @@ impl<'a> Parser<'a> {
         CustomData { tag, value }
     }
 
+    /// parse_encoding_data handles the parsing of the CHARS tag
+    fn parse_encoding_data(&mut self) -> Encoding {
+        let mut encoding = Encoding::default();
+
+        encoding.value = Some(self.take_line_value());
+
+        loop {
+            if let Token::Level(cur_level) = self.tokenizer.current_token {
+                if cur_level <= 1 {
+                    break;
+                }
+            }
+            match &self.tokenizer.current_token {
+                Token::Tag(tag) => match tag.as_str() {
+                    "VERS" => encoding.version = Some(self.take_line_value()),
+                    _ => panic!("{} Unhandled CHAR Tag: {}", self.dbg(), tag),
+                },
+                Token::Level(_) => self.tokenizer.next_token(),
+                _ => panic!(
+                    "{} Unexpected CHAR Token: {:?}",
+                    self.dbg(),
+                    &self.tokenizer.current_token
+                ),
+            }
+        }
+        encoding
+    }
+
+    /// parse_data handles the DATE tag
+    fn parse_date(&mut self, level: u8) -> Date {
+        let mut date = Date::default();
+        date.value = Some(self.take_line_value());
+
+        loop {
+            if let Token::Level(cur_level) = self.tokenizer.current_token {
+                if cur_level <= level {
+                    break;
+                }
+            }
+            match &self.tokenizer.current_token {
+                Token::Tag(tag) => match tag.as_str() {
+                    "TIME" => date.time = Some(self.take_line_value()),
+                    _ => panic!("{} unhandled DATE tag: {}", self.dbg(), tag),
+                },
+                Token::Level(_) => self.tokenizer.next_token(),
+                _ => panic!("Unexpected DATE token: {:?}", &self.tokenizer.current_token),
+            }
+        }
+        date
+    }
+
+    ///parse_translation handles the TRAN tag
+    fn parse_translation(&mut self, level: u8) -> Translation {
+        let mut tran = Translation::default();
+        tran.value = Some(self.take_line_value());
+
+        loop {
+            if let Token::Level(cur_level) = self.tokenizer.current_token {
+                if cur_level <= level {
+                    break;
+                }
+            }
+            match &self.tokenizer.current_token {
+                Token::Tag(tag) => match tag.as_str() {
+                    "MIME" => tran.mime = Some(self.take_line_value()),
+                    "LANG" => tran.language = Some(self.take_line_value()),
+                    _ => panic!("{} unhandled NOTE tag: {}", self.dbg(), tag),
+                },
+                Token::Level(_) => self.tokenizer.next_token(),
+                _ => panic!("Unexpected NOTE token: {:?}", &self.tokenizer.current_token),
+            }
+        }
+        tran
+    }
+
+    ///parse_note handles the NOTE tag
+    fn parse_note(&mut self, level: u8) -> Note {
+        let mut note = Note::default();
+        let mut value = String::new();
+
+        value.push_str(&self.take_line_value());
+
+        loop {
+            if let Token::Level(cur_level) = self.tokenizer.current_token {
+                if cur_level <= level {
+                    break;
+                }
+            }
+            match &self.tokenizer.current_token {
+                Token::Tag(tag) => match tag.as_str() {
+                    "MIME" => note.mime = Some(self.take_line_value()),
+                    "TRAN" => note.translation = Some(self.parse_translation(level + 1)),
+                    "LANG" => note.language = Some(self.take_line_value()),
+                    "CONT" | "CONC" => {
+                        value.push('\n');
+                        value.push_str(&self.take_line_value());
+                    }
+                    _ => panic!("{} unhandled NOTE tag: {}", self.dbg(), tag),
+                },
+                Token::Level(_) => self.tokenizer.next_token(),
+                _ => panic!("Unexpected NOTE token: {:?}", &self.tokenizer.current_token),
+            }
+        }
+        if value != "" {
+            note.value = Some(value);
+        }
+        note
+    }
+
     /// Handle parsing GEDC tag
     fn parse_gedcom_data(&mut self, mut header: Header) -> Header {
+        let mut gedc = GedcomDocument::default();
+
         // skip GEDC tag
         self.tokenizer.next_token();
 
-        while self.tokenizer.current_token != Token::Level(1) {
+        loop {
+            if let Token::Level(cur_level) = self.tokenizer.current_token {
+                if cur_level <= 1 {
+                    break;
+                }
+            }
+
             match &self.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
-                    "VERS" => header.gedcom_version = Some(self.take_line_value()),
+                    "VERS" => gedc.version = Some(self.take_line_value()),
                     // this is the only value that makes sense. warn them otherwise.
                     "FORM" => {
                         let form = self.take_line_value();
@@ -321,6 +571,7 @@ impl<'a> Parser<'a> {
                                 "WARNING: Unrecognized GEDCOM form. Expected LINEAGE-LINKED, found {}"
                             , form);
                         }
+                        gedc.form = Some(form);
                     }
                     _ => panic!("{} Unhandled GEDC Tag: {}", self.dbg(), tag),
                 },
@@ -332,6 +583,7 @@ impl<'a> Parser<'a> {
                 ),
             }
         }
+        header.gedcom = Some(gedc);
         header
     }
 
@@ -480,7 +732,7 @@ impl<'a> Parser<'a> {
             }
             match &self.tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
-                    "CONT" => {
+                    "CONT" | "CONC" => {
                         value.push('\n');
                         value.push_str(&self.take_line_value());
                     }

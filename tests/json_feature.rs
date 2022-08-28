@@ -52,6 +52,36 @@ mod json_feature_tests {
         let gedcom_content: String = read_relative("./tests/fixtures/simple.ged");
         let data = parse(gedcom_content.chars());
 
+        assert_eq!(serde_json::to_string_pretty(&data.header).unwrap(), "\
+{
+  \"gedcom\": {
+    \"version\": \"5.5\",
+    \"form\": \"Lineage-Linked\"
+  },
+  \"encoding\": {
+    \"value\": \"ASCII\",
+    \"version\": null
+  },
+  \"source\": {
+    \"value\": \"ID_OF_CREATING_FILE\",
+    \"version\": null,
+    \"name\": null,
+    \"corporation\": null,
+    \"data\": null
+  },
+  \"destination\": null,
+  \"date\": null,
+  \"submitter_tag\": \"@SUBMITTER@\",
+  \"submission_tag\": null,
+  \"copyright\": null,
+  \"language\": null,
+  \"filename\": null,
+  \"note\": null,
+  \"place\": null,
+  \"custom_data\": []
+}\
+        ");
+
         assert_eq!(
             serde_json::to_string_pretty(&data.families).unwrap(),
             "[
