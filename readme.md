@@ -60,7 +60,6 @@ Here are some notes about parsed data & tags. Page references are to the [Gedcom
 
 ### Top-level tags
 
-* `HEAD.SOUR` - p.42 - The source in the header is currently skipped.
 * `SUBMISSION_RECORD` - p.28 - No attempt at handling this is made.
 * `MULTIMEDIA_RECORD` - p.26 - Multimedia (`OBJE`) is not currently parsed.
 * `NOTE_RECORD` - p.27 - Notes (`NOTE`) are also unhandled. (except in header)

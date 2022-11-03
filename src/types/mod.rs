@@ -10,6 +10,9 @@ use serde::{Deserialize, Serialize};
 pub mod event;
 pub use event::{Event, EventType};
 
+pub mod date;
+pub use date::{Date, ChangeDate};
+
 mod address;
 pub use address::*;
 
@@ -33,6 +36,18 @@ pub use submitter::*;
 
 mod source;
 pub use source::*;
+
+mod note;
+pub use note::*;
+
+mod translation;
+pub use translation::*;
+
+mod copyright;
+pub use copyright::*;
+
+mod corporation;
+pub use corporation::*;
 
 // TODO
 /// Multimedia item

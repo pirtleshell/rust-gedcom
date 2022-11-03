@@ -26,9 +26,12 @@ mod tests {
         assert_eq!(data.submitters.len(), 1);
 
         // header
-        assert_eq!(data.header.encoding.unwrap().as_str(), "ASCII");
+        assert_eq!(
+            data.header.encoding.unwrap().value.unwrap().as_str(),
+            "ASCII"
+        );
         assert_eq!(data.header.submitter_tag.unwrap().as_str(), "@SUBMITTER@");
-        assert_eq!(data.header.gedcom_version.unwrap().as_str(), "5.5");
+        assert_eq!(data.header.gedcom.unwrap().version.unwrap(), "5.5");
 
         // names
         assert_eq!(

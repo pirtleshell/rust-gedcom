@@ -16,6 +16,8 @@ pub struct Submitter {
     pub address: Option<Address>,
     /// Phone number of the submitter
     pub phone: Option<String>,
+    /// TODO
+    pub language: Option<String>,
 }
 
 impl Submitter {
@@ -27,6 +29,9 @@ impl Submitter {
             name: None,
             address: None,
             phone: None,
+            language: None,
         }
     }
 }
+
+
