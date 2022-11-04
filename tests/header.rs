@@ -14,7 +14,7 @@ mod tests {
         let mut parser = Parser::new(sample.chars());
         let data = parser.parse_record();
 
-        let head_gedc = data.header.gedcom.unwrap();
+        let head_gedc = data.header.unwrap().gedcom.unwrap();
         assert_eq!(head_gedc.version.unwrap(), "5.5");
         assert_eq!(head_gedc.form.unwrap(), "LINEAGE-LINKED");
     }
@@ -48,7 +48,7 @@ mod tests {
         let mut parser = Parser::new(sample.chars());
         let data = parser.parse_record();
 
-        let sour = data.header.source.unwrap();
+        let sour = data.header.unwrap().source.unwrap();
         assert_eq!(sour.value.unwrap(), "SOURCE_NAME");
 
         let vers = sour.version.unwrap();
@@ -98,7 +98,7 @@ mod tests {
         let data = parser.parse_record();
 
         assert_eq!(
-            data.header.destination.unwrap(),
+            data.header.unwrap().destination.unwrap(),
             "Destination of transmission"
         );
     }
@@ -116,7 +116,7 @@ mod tests {
         let mut parser = Parser::new(sample.chars());
         let data = parser.parse_record();
 
-        let h_date = data.header.date.unwrap();
+        let h_date = data.header.unwrap().date.unwrap();
         assert_eq!(h_date.value.unwrap(), "1 JAN 1998");
         assert_eq!(h_date.time.unwrap(), "13:57:24.80");
     }
@@ -135,7 +135,7 @@ mod tests {
         let mut parser = Parser::new(sample.chars());
         let data = parser.parse_record();
 
-        let h_subm = data.header.submitter_tag.unwrap();
+        let h_subm = data.header.unwrap().submitter_tag.unwrap();
         assert_eq!(h_subm.as_str(), "@SUBMITTER@");
     }
 
@@ -153,7 +153,7 @@ mod tests {
         let mut parser = Parser::new(sample.chars());
         let data = parser.parse_record();
 
-        let h_subn = data.header.submission_tag.unwrap();
+        let h_subn = data.header.unwrap().submission_tag.unwrap();
         assert_eq!(h_subn.as_str(), "@SUBMISSION@");
     }
 
@@ -171,7 +171,7 @@ mod tests {
         let mut parser = Parser::new(sample.chars());
         let data = parser.parse_record();
 
-        let h_file = data.header.filename.unwrap();
+        let h_file = data.header.unwrap().filename.unwrap();
         assert_eq!(h_file.as_str(), "ALLGED.GED");
     }
 
@@ -188,7 +188,7 @@ mod tests {
         let mut parser = Parser::new(sample.chars());
         let data = parser.parse_record();
 
-        let h_copr = data.header.copyright.unwrap();
+        let h_copr = data.header.unwrap().copyright.unwrap();
         assert_eq!(h_copr.value.unwrap(), "(C) 1997-2000 by H. Eichmann.");
         assert_eq!(
             h_copr.continued.unwrap(),
@@ -209,7 +209,7 @@ mod tests {
         let mut parser = Parser::new(sample.chars());
         let data = parser.parse_record();
 
-        let h_char = data.header.encoding.unwrap();
+        let h_char = data.header.unwrap().encoding.unwrap();
         assert_eq!(h_char.value.unwrap(), "ASCII");
         assert_eq!(
             h_char.version.unwrap(),
@@ -229,7 +229,7 @@ mod tests {
         let mut parser = Parser::new(sample.chars());
         let data = parser.parse_record();
 
-        let h_lang = data.header.language.unwrap();
+        let h_lang = data.header.unwrap().language.unwrap();
         assert_eq!(h_lang.as_str(), "language");
     }
 
@@ -246,7 +246,7 @@ mod tests {
         let mut parser = Parser::new(sample.chars());
         let data = parser.parse_record();
 
-        let h_plac = data.header.place.unwrap();
+        let h_plac = data.header.unwrap().place.unwrap();
         assert_eq!(h_plac.form[0], "City");
         assert_eq!(h_plac.form[1], "County");
         assert_eq!(h_plac.form[2], "State");
@@ -281,7 +281,7 @@ mod tests {
         let mut parser = Parser::new(sample.chars());
         let data = parser.parse_record();
 
-        let h_note = data.header.note.unwrap();
+        let h_note = data.header.unwrap().note.unwrap();
         assert_eq!(h_note.value.unwrap().chars().count(), 1441);
     }
 }

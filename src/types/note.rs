@@ -1,4 +1,11 @@
-use crate::types::{Translation, Source};
+use crate::{
+    parser::Parse,
+    tokenizer::{Token, Tokenizer},
+    types::{Source, Translation},
+    util::dbg,
+    util::take_line_value,
+};
+
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
 
@@ -29,4 +36,48 @@ pub struct Note {
     /// the Text-typed payloads of the superstructure and its substructures appear. See
     /// https://gedcom.io/specifications/FamilySearchGEDCOMv7.html#LANG
     pub language: Option<String>,
+}
+
+impl Note {
+    #[must_use]
+    pub fn new(tokenizer: &mut Tokenizer, level: u8) -> Note {
+        let mut note = Note::default();
+        note.parse(tokenizer, level);
+        note
+    }
+}
+
+impl Parse for Note {
+    /// parse handles the NOTE tag
+    fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
+        let mut value = String::new();
+
+        value.push_str(&take_line_value(tokenizer));
+
+        loop {
+            if let Token::Level(cur_level) = tokenizer.current_token {
+                if cur_level <= level {
+                    break;
+                }
+            }
+
+            match &tokenizer.current_token {
+                Token::Tag(tag) => match tag.as_str() {
+                    "MIME" => self.mime = Some(take_line_value(tokenizer)),
+                    "TRANS" => self.translation = Some(Translation::new(tokenizer, level + 1)),
+                    "LANG" => self.language = Some(take_line_value(tokenizer)),
+                    "CONT" | "CONC" => {
+                        value.push('\n');
+                        value.push_str(&take_line_value(tokenizer));
+                    }
+                    _ => panic!("{} unhandled NOTE tag: {}", dbg(&tokenizer), tag),
+                },
+                Token::Level(_) => tokenizer.next_token(),
+                _ => panic!("Unexpected NOTE token: {:?}", &tokenizer.current_token),
+            }
+        }
+        if value != "" {
+            self.value = Some(value);
+        }
+    }
 }

@@ -1,4 +1,9 @@
-use crate::types::SourceCitation;
+use crate::{
+    parser::Parse,
+    tokenizer::{Token, Tokenizer},
+    types::SourceCitation,
+    util::{dbg, take_line_value},
+};
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
 use std::{fmt, string::ToString};
@@ -38,13 +43,15 @@ pub struct Event {
 
 impl Event {
     #[must_use]
-    pub fn new(etype: EventType) -> Event {
-        Event {
-            event: etype,
+    pub fn new(tokenizer: &mut Tokenizer, level: u8, tag: &str) -> Event {
+        let mut event = Event {
+            event: Self::from_tag(tag),
             date: None,
             place: None,
             citations: Vec::new(),
-        }
+        };
+        event.parse(tokenizer, level);
+        event
     }
 
     /** converts an event to be of type `SourceData` with `value` as the data */
@@ -52,9 +59,8 @@ impl Event {
         self.event = EventType::SourceData(value);
     }
 
-    #[must_use]
-    pub fn from_tag(tag: &str) -> Event {
-        let etype = match tag {
+    pub fn from_tag(tag: &str) -> EventType {
+        match tag {
             "ADOP" => EventType::Adoption,
             "BIRT" => EventType::Birth,
             "BURI" => EventType::Burial,
@@ -64,8 +70,7 @@ impl Event {
             "RESI" => EventType::Residence,
             "OTHER" => EventType::Other,
             _ => panic!("Unrecognized event tag: {}", tag),
-        };
-        Event::new(etype)
+        }
     }
 
     pub fn add_citation(&mut self, citation: SourceCitation) {
@@ -111,5 +116,31 @@ pub trait HasEvents {
             }
         }
         places
+    }
+}
+
+impl Parse for Event {
+    fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
+
+        tokenizer.next_token();
+
+        loop {
+            if let Token::Level(cur_level) = tokenizer.current_token {
+                if cur_level <= level {
+                    break;
+                }
+            }
+
+            match &tokenizer.current_token {
+                Token::Tag(tag) => match tag.as_str() {
+                    "DATE" => self.date = Some(take_line_value(tokenizer)),
+                    "PLAC" => self.place = Some(take_line_value(tokenizer)),
+                    "SOUR" => self.add_citation(SourceCitation::new(tokenizer, level + 1)),
+                    _ => panic!("{} Unhandled Event Tag: {}", dbg(tokenizer), tag),
+                },
+                Token::Level(_) => tokenizer.next_token(),
+                _ => panic!("Unhandled Event Token: {:?}", tokenizer.current_token),
+            }
+        }
     }
 }

@@ -1,6 +1,13 @@
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
 
+use crate::{
+    parser::Parse,
+    tokenizer::{Token, Tokenizer},
+    util::dbg,
+    util::take_line_value,
+};
+
 /// Translation (tag:TRAN) is a type of TRAN for unstructured human-readable text, such as
 /// is found in NOTE and SNOTE payloads. Each NOTE-TRAN must have either a LANG substructure or a
 /// MIME substructure or both. If either is missing, it is assumed to have the same value as the
@@ -13,4 +20,40 @@ pub struct Translation {
     pub mime: Option<String>,
     /// tag:LANG
     pub language: Option<String>,
+}
+
+impl Translation {
+    #[must_use]
+    pub fn new(tokenizer: &mut Tokenizer, level: u8) -> Translation {
+        let mut tran = Translation::default();
+        tran.parse(tokenizer, level);
+        tran
+    }
+}
+
+impl Parse for Translation {
+    
+    ///parse handles the TRAN tag
+    fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
+
+        self.value = Some(take_line_value(tokenizer));
+
+        loop {
+            if let Token::Level(cur_level) = tokenizer.current_token {
+                if cur_level <= level {
+                    break;
+                }
+            }
+
+            match &tokenizer.current_token {
+                Token::Tag(tag) => match tag.as_str() {
+                    "MIME" => self.mime = Some(take_line_value(tokenizer)),
+                    "LANG" => self.language = Some(take_line_value(tokenizer)),
+                    _ => panic!("{} unhandled NOTE tag: {}", dbg(&tokenizer), tag),
+                },
+                Token::Level(_) => tokenizer.next_token(),
+                _ => panic!("Unexpected NOTE token: {:?}", &tokenizer.current_token),
+            }
+        }
+    }
 }

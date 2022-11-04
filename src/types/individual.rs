@@ -1,4 +1,10 @@
-use crate::types::{event::HasEvents, CustomData, Event};
+use crate::{
+    parser::Parse,
+    tokenizer::{Token, Tokenizer},
+    types::{event::HasEvents, CustomData, Event},
+    util::{dbg, parse_custom_tag, take_line_value},
+};
+
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
 
@@ -19,8 +25,8 @@ pub struct Individual {
 
 impl Individual {
     #[must_use]
-    pub fn new(xref: Option<Xref>) -> Individual {
-        Individual {
+    pub fn new(tokenizer: &mut Tokenizer, level: u8, xref: Option<Xref>) -> Individual {
+        let mut indi = Individual {
             xref,
             name: None,
             sex: Gender::Unknown,
@@ -28,7 +34,9 @@ impl Individual {
             families: Vec::new(),
             custom_data: Vec::new(),
             last_updated: None,
-        }
+        };
+        indi.parse(tokenizer, level);
+        indi
     }
 
     pub fn add_family(&mut self, link: FamilyLink) {
@@ -58,15 +66,88 @@ impl HasEvents for Individual {
     }
 }
 
+impl Parse for Individual {
+    /// parse handles the INDI top-level tag
+    fn parse(&mut self, tokenizer: &mut crate::tokenizer::Tokenizer, level: u8) {
+        // skip over INDI tag name
+        tokenizer.next_token();
+
+        while tokenizer.current_token != Token::Level(level) {
+            match &tokenizer.current_token {
+                Token::Tag(tag) => match tag.as_str() {
+                    "NAME" => self.name = Some(Name::new(tokenizer, level + 1)),
+                    "SEX" => self.sex = Gender::new(tokenizer, level + 1),
+                    "ADOP" | "BIRT" | "BAPM" | "BARM" | "BASM" | "BLES" | "BURI" | "CENS"
+                    | "CHR" | "CHRA" | "CONF" | "CREM" | "DEAT" | "EMIG" | "FCOM" | "GRAD"
+                    | "IMMI" | "NATU" | "ORDN" | "RETI" | "RESI" | "PROB" | "WILL" | "EVEN" => {
+                        let tag_clone = tag.clone();
+                        self.add_event(Event::new(tokenizer, level + 1, tag_clone.as_str()));
+                    }
+                    "FAMC" | "FAMS" => {
+                        let tag_clone = tag.clone();
+                        self.add_family(FamilyLink::new(tokenizer, level + 1, tag_clone.as_str())); 
+                    }
+                    "CHAN" => {
+                        // assuming it always only has a single DATE subtag
+                        tokenizer.next_token(); // level
+                        tokenizer.next_token(); // DATE tag
+                        self.last_updated = Some(take_line_value(tokenizer));
+                    }
+                    _ => panic!("{} Unhandled Individual Tag: {}", dbg(tokenizer), tag),
+                },
+                Token::CustomTag(tag) => {
+                    let tag_clone = tag.clone();
+                    self.add_custom_data(parse_custom_tag(tokenizer, tag_clone))
+                }
+                Token::Level(_) => tokenizer.next_token(),
+                _ => panic!("Unhandled Individual Token: {:?}", tokenizer.current_token),
+            }
+        }
+    }
+}
+
 /// Gender of an `Individual`
 #[derive(Debug)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub enum Gender {
     Male,
     Female,
-    // come at me LDS, i support "N" as a gender value
     Nonbinary,
     Unknown,
+}
+
+impl Gender {
+    pub fn new(tokenizer: &mut Tokenizer, level: u8) -> Gender {
+        let mut gender = Gender::Unknown;
+        gender.parse(tokenizer, level);
+        gender
+    }
+}
+
+impl Parse for Gender {
+    fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
+        tokenizer.next_token();
+        if let Token::LineValue(gender_string) = &tokenizer.current_token {
+            *self = match gender_string.as_str() {
+                "M" => Gender::Male,
+                "F" => Gender::Female,
+                "N" => Gender::Nonbinary,
+                "U" => Gender::Unknown,
+                _ => panic!(
+                    "{} Unknown gender value {} ({})",
+                    dbg(tokenizer),
+                    gender_string,
+                    level
+                ),
+            };
+        } else {
+            panic!(
+                "Expected gender LineValue, found {:?}",
+                tokenizer.current_token
+            );
+        }
+        tokenizer.next_token();
+    }
 }
 
 #[derive(Debug)]
@@ -91,13 +172,16 @@ pub struct FamilyLink(Xref, FamilyLinkType, Option<Pedigree>);
 
 impl FamilyLink {
     #[must_use]
-    pub fn new(xref: Xref, tag: &str) -> FamilyLink {
+    pub fn new(tokenizer: &mut Tokenizer, level: u8, tag: &str) -> FamilyLink {
+let xref = take_line_value(tokenizer);
         let link_type = match tag {
             "FAMC" => FamilyLinkType::Child,
             "FAMS" => FamilyLinkType::Spouse,
             _ => panic!("Unrecognized family type tag: {}", tag),
         };
-        FamilyLink(xref, link_type, None)
+        let mut family_link = FamilyLink(xref, link_type, None);
+        family_link.parse(tokenizer, level);
+        family_link
     }
 
     pub fn set_pedigree(&mut self, pedigree_text: &str) {
@@ -111,6 +195,29 @@ impl FamilyLink {
     }
 }
 
+impl Parse for FamilyLink {
+    fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
+        loop {
+            if let Token::Level(cur_level) = tokenizer.current_token {
+                if cur_level <= level {
+                    break;
+                }
+            }
+            match &tokenizer.current_token {
+                Token::Tag(tag) => match tag.as_str() {
+                    "PEDI" => self.set_pedigree(take_line_value(tokenizer).as_str()),
+                    _ => panic!("{} Unhandled FamilyLink Tag: {}", dbg(tokenizer), tag),
+                },
+                Token::Level(_) => tokenizer.next_token(),
+                _ => panic!(
+                    "Unhandled FamilyLink Token: {:?}",
+                    tokenizer.current_token
+                ),
+            }
+        }
+    }
+}
+
 #[derive(Debug, Default, PartialEq)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct Name {
@@ -120,4 +227,38 @@ pub struct Name {
     pub prefix: Option<String>,
     pub surname_prefix: Option<String>,
     pub suffix: Option<String>,
+}
+
+impl Name {
+    pub fn new(tokenizer: &mut Tokenizer, level: u8) -> Name {
+        let mut name = Name::default();
+        name.parse(tokenizer, level);
+        name
+    }
+}
+
+impl Parse for Name {
+    fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
+        self.value = Some(take_line_value(tokenizer));
+
+        loop {
+            if let Token::Level(cur_level) = tokenizer.current_token {
+                if cur_level <= level {
+                    break;
+                }
+            }
+            match &tokenizer.current_token {
+                Token::Tag(tag) => match tag.as_str() {
+                    "GIVN" => self.given = Some(take_line_value(tokenizer)),
+                    "NPFX" => self.prefix = Some(take_line_value(tokenizer)),
+                    "NSFX" => self.suffix = Some(take_line_value(tokenizer)),
+                    "SPFX" => self.surname_prefix = Some(take_line_value(tokenizer)),
+                    "SURN" => self.surname = Some(take_line_value(tokenizer)),
+                    _ => panic!("{} Unhandled Name Tag: {}", dbg(tokenizer), tag),
+                },
+                Token::Level(_) => tokenizer.next_token(),
+                _ => panic!("Unhandled Name Token: {:?}", tokenizer.current_token),
+            }
+        }
+    }
 }

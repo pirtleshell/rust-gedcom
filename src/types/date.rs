@@ -1,3 +1,9 @@
+use crate::{
+    parser::Parse,
+    tokenizer::{Token, Tokenizer},
+    util::{dbg, take_line_value},
+};
+
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
 
@@ -21,6 +27,38 @@ impl Date {
                 Some(dt)
             }
             None => None,
+        }
+    }
+}
+
+impl Date {
+    #[must_use]
+    pub fn new(tokenizer: &mut Tokenizer, level: u8) -> Date {
+        let mut date = Date::default();
+        date.parse(tokenizer, level);
+        date
+    }
+}
+
+impl Parse for Date {
+    /// parse handles the DATE tag
+    fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
+        self.value = Some(take_line_value(tokenizer));
+
+        loop {
+            if let Token::Level(cur_level) = tokenizer.current_token {
+                if cur_level <= level {
+                    break;
+                }
+            }
+            match &tokenizer.current_token {
+                Token::Tag(tag) => match tag.as_str() {
+                    "TIME" => self.time = Some(take_line_value(tokenizer)),
+                    _ => panic!("{} unhandled DATE tag: {}", dbg(tokenizer), tag),
+                },
+                Token::Level(_) => tokenizer.next_token(),
+                _ => panic!("Unexpected DATE token: {:?}", tokenizer.current_token),
+            }
         }
     }
 }

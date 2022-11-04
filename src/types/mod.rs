@@ -11,7 +11,7 @@ pub mod event;
 pub use event::{Event, EventType};
 
 pub mod date;
-pub use date::{Date, ChangeDate};
+pub use date::{ChangeDate, Date};
 
 mod address;
 pub use address::*;
@@ -40,6 +40,9 @@ pub use note::*;
 mod translation;
 pub use translation::*;
 
+mod repository;
+pub use repository::*;
+
 mod copyright;
 pub use copyright::*;
 
@@ -51,38 +54,6 @@ pub use corporation::*;
 #[derive(Debug)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct Media {}
-
-/// Data repository, the `REPO` tag
-#[derive(Debug)]
-#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-pub struct Repository {
-    /// Optional reference to link to this repo
-    pub xref: Option<Xref>,
-    /// Name of the repository
-    pub name: Option<String>,
-    /// Physical address of the data repository
-    pub address: Option<Address>,
-}
-
-/// Citation linking a genealogy fact to a data `Source`
-#[derive(Clone, Debug)]
-#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-pub struct SourceCitation {
-    /// Reference to the `Source`
-    pub xref: Xref,
-    /// Page number of source
-    pub page: Option<String>,
-}
-
-/// Citation linking a `Source` to a data `Repository`
-#[derive(Debug)]
-#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-pub struct RepoCitation {
-    /// Reference to the `Repository`
-    pub xref: Xref,
-    /// Call number to find the source at this repository
-    pub call_number: Option<String>,
-}
 
 #[derive(Debug)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
