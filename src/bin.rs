@@ -1,5 +1,5 @@
 use gedcom::parser::Parser;
-use gedcom::Gedcom;
+use gedcom::GedcomData;
 use std::env;
 use std::fs;
 use std::path::PathBuf;
@@ -18,7 +18,7 @@ fn main() {
         usage("");
     }
 
-    let data: Gedcom;
+    let data: GedcomData;
 
     if let Ok(contents) = read_relative(filename) {
         let mut parser = Parser::new(contents.chars());
