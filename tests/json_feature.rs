@@ -1,7 +1,4 @@
 #[cfg(test)]
-mod lib;
-
-#[cfg(test)]
 #[cfg(feature = "json")]
 mod json_feature_tests {
     use super::lib::util::read_relative;
