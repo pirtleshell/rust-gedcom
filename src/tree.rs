@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 /// The data structure representing all the data within a gedcom file
 pub struct Gedcom {
     /// Header containing file metadata
-    pub header: Header,
+    pub header: Option<Header>,
     /// List of submitters of the facts
     pub submitters: Vec<Submitter>,
     /// Individuals within the family tree

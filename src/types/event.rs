@@ -1,41 +1,24 @@
-use crate::parser::{Parsable, Parser, ParsingError};
-use crate::tokenizer::Token;
-use crate::types::SourceCitation;
-
+use crate::{
+    parser::Parse,
+    tokenizer::{Token, Tokenizer},
+    types::SourceCitation,
+    util::{dbg, take_line_value},
+};
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
-use std::default::Default;
-use std::fmt;
-use std::string::ToString;
+use std::{fmt, string::ToString};
 
 #[allow(clippy::module_name_repetitions)]
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub enum EventType {
     Adoption,
-    Baptism,
-    BarMitzvah,
-    BasMitzvah,
     Birth,
-    Blessing,
     Burial,
-    Census,
-    Christening,
-    ChristeningAdult,
-    Confirmation,
-    Cremation,
     Death,
-    Emigration,
-    FirstCommunion,
-    Graduation,
-    Immigration,
+    Christening,
     Marriage,
-    Naturalization,
-    Ordination,
-    Probate,
     Residence,
-    Retirement,
-    Will,
     SourceData(String),
 
     // "Other" is used to construct an event without requiring an explicit event type
@@ -48,65 +31,26 @@ impl ToString for EventType {
     }
 }
 
-impl EventType {
-    #[must_use]
-    pub fn from_tag(tag: &str) -> EventType {
-        match tag {
-            "ADOP" => EventType::Adoption,
-            "BAPM" => EventType::Baptism,
-            "BARM" => EventType::BarMitzvah,
-            "BASM" => EventType::BasMitzvah,
-            "BLES" => EventType::Blessing,
-            "BIRT" => EventType::Birth,
-            "BURI" => EventType::Burial,
-            "CENS" => EventType::Census,
-            "CHR" => EventType::Christening,
-            "CHRA" => EventType::ChristeningAdult,
-            "CONF" => EventType::Confirmation,
-            "CREM" => EventType::Cremation,
-            "DEAT" => EventType::Death,
-            "EMIG" => EventType::Emigration,
-            "FCOM" => EventType::FirstCommunion,
-            "GRAD" => EventType::Graduation,
-            "IMMI" => EventType::Immigration,
-            "MARR" => EventType::Marriage,
-            "NATU" => EventType::Naturalization,
-            "ORDN" => EventType::Ordination,
-            "PROB" => EventType::Probate,
-            "RESI" => EventType::Residence,
-            "RETI" => EventType::Retirement,
-            "WILL" => EventType::Will,
-
-            "OTHER" => EventType::Other,
-
-            "EVEN" => panic!("EVEN passed as event tag instead of value."),
-            _ => panic!("Unrecognized event tag: {}", tag),
-        }
-    }
-}
-
-impl Default for EventType {
-    fn default() -> EventType {
-        EventType::Other
-    }
-}
-
 /// Event fact
-#[derive(Default, Clone)]
+#[derive(Clone)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct Event {
     pub event: EventType,
     pub date: Option<String>,
-    pub descriptor: Option<String>,
     pub place: Option<String>,
     pub citations: Vec<SourceCitation>,
 }
 
 impl Event {
     #[must_use]
-    pub fn new(etype: EventType) -> Event {
-        let mut event = Event::default();
-        event.event = etype;
+    pub fn new(tokenizer: &mut Tokenizer, level: u8, tag: &str) -> Event {
+        let mut event = Event {
+            event: Self::from_tag(tag),
+            date: None,
+            place: None,
+            citations: Vec::new(),
+        };
+        event.parse(tokenizer, level);
         event
     }
 
@@ -115,10 +59,18 @@ impl Event {
         self.event = EventType::SourceData(value);
     }
 
-    #[must_use]
-    pub fn from_tag(tag: &str) -> Event {
-        let etype = EventType::from_tag(tag);
-        Event::new(etype)
+    pub fn from_tag(tag: &str) -> EventType {
+        match tag {
+            "ADOP" => EventType::Adoption,
+            "BIRT" => EventType::Birth,
+            "BURI" => EventType::Burial,
+            "CHR" => EventType::Christening,
+            "DEAT" => EventType::Death,
+            "MARR" => EventType::Marriage,
+            "RESI" => EventType::Residence,
+            "OTHER" => EventType::Other,
+            _ => panic!("Unrecognized event tag: {}", tag),
+        }
     }
 
     pub fn add_citation(&mut self, citation: SourceCitation) {
@@ -128,68 +80,6 @@ impl Event {
     #[must_use]
     pub fn get_citations(&self) -> Vec<SourceCitation> {
         self.citations.clone()
-    }
-}
-
-impl Parsable<Event> for Event {
-    fn parse(parser: &mut Parser) -> Result<Event, ParsingError> {
-        let base_lvl = parser.level;
-        // extract current tag name to determine event type.
-        let tag: &str = parser.take_tag();
-
-        // Events begin with either EVEN <type>, or a type tag.
-        let type_tag: &str = if tag == "EVEN" {
-            if let Token::LineValue(v) = &parser.tokenizer.current_token {
-                v
-            } else {
-                // if there's no line value, there's supposed to be a TYPE tag
-                "OTHER"
-            }
-        } else {
-            tag
-        };
-
-        let mut event = Event::from_tag(&type_tag);
-
-        parser.tokenizer.next_token();
-
-        loop {
-            if let Token::Level(cur_level) = parser.tokenizer.current_token {
-                if cur_level <= base_lvl {
-                    break;
-                }
-            }
-            match &parser.tokenizer.current_token {
-                Token::Tag(tag) => match tag.as_str() {
-                    "DATE" => event.date = Some(parser.take_line_value()),
-                    "PLAC" => event.place = Some(parser.take_line_value()),
-                    // TODO Citation::parse
-                    "SOUR" => event.add_citation(parser.parse_citation()),
-                    _ => parser.skip_current_tag("Event"),
-                },
-                Token::Level(_) => parser.set_level(),
-                Token::LineValue(v) => {
-                    // some events have bool-like descriptor like "Y", apparently? just skip those?
-                    if v.as_str() == "Y" {
-                        parser.tokenizer.next_token();
-                    } else {
-                        // TODO: handle comma-delimited event types...
-                        // just setting as descriptor for now
-
-                        event.descriptor = Some(v.into());
-                        println!(
-                            "{} Using event descriptor: {:?}",
-                            parser.dbg(),
-                            &event.descriptor
-                        );
-                        parser.tokenizer.next_token();
-                    }
-                }
-                _ => parser.handle_unexpected_token("Event"),
-            }
-        }
-
-        Ok(event)
     }
 }
 
@@ -226,5 +116,31 @@ pub trait HasEvents {
             }
         }
         places
+    }
+}
+
+impl Parse for Event {
+    fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
+
+        tokenizer.next_token();
+
+        loop {
+            if let Token::Level(cur_level) = tokenizer.current_token {
+                if cur_level <= level {
+                    break;
+                }
+            }
+
+            match &tokenizer.current_token {
+                Token::Tag(tag) => match tag.as_str() {
+                    "DATE" => self.date = Some(take_line_value(tokenizer)),
+                    "PLAC" => self.place = Some(take_line_value(tokenizer)),
+                    "SOUR" => self.add_citation(SourceCitation::new(tokenizer, level + 1)),
+                    _ => panic!("{} Unhandled Event Tag: {}", dbg(tokenizer), tag),
+                },
+                Token::Level(_) => tokenizer.next_token(),
+                _ => panic!("Unhandled Event Token: {:?}", tokenizer.current_token),
+            }
+        }
     }
 }
