@@ -17,6 +17,8 @@ mod tests {
     #[test]
     fn parses_basic_gedcom() {
         let simple_ged: String = read_relative("./tests/fixtures/simple.ged");
+        // let simple_ged: String = read_relative("./tests/fixtures/washington.ged");
+        // let simple_ged: String = read_relative("./tests/fixtures/allged.ged");
         assert!(simple_ged.len() > 0);
 
         let mut parser = Parser::new(simple_ged.chars());

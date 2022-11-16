@@ -1,4 +1,9 @@
-use crate::types::{Family, Header, Individual, Media, Repository, Source, Submitter};
+use crate::{
+    parser::Parse,
+    tokenizer::{Tokenizer, Token},
+    types::{Family, Header, Individual, Multimedia, Repository, Source, Submitter},
+    util::{dbg, parse_custom_tag},
+};
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
 
@@ -19,11 +24,19 @@ pub struct GedcomData {
     /// Sources of facts. _ie._ book, document, census, etc.
     pub sources: Vec<Source>,
     /// A multimedia asset linked to a fact
-    pub multimedia: Vec<Media>,
+    pub multimedia: Vec<Multimedia>,
 }
 
 // should maybe store these by xref if available?
 impl GedcomData {
+    /// contructor for GedcomData
+    #[must_use]
+    pub fn new(tokenizer: &mut Tokenizer, level: u8) -> GedcomData {
+        let mut data = GedcomData::default();
+        data.parse(tokenizer, level);
+        data
+    }
+
     /// Adds a `Family` (a relationship between individuals) to the tree
     pub fn add_family(&mut self, family: Family) {
         self.families.push(family);
@@ -49,6 +62,11 @@ impl GedcomData {
         self.submitters.push(submitter);
     }
 
+    /// Adds a `Multimedia` to the tree
+    pub fn add_multimedia(&mut self, multimedia: Multimedia) {
+      self.multimedia.push(multimedia);
+    }
+
     /// Outputs a summary of data contained in the tree to stdout
     pub fn stats(&self) {
         println!("----------------------");
@@ -61,5 +79,68 @@ impl GedcomData {
         println!("  sources: {}", self.sources.len());
         println!("  multimedia: {}", self.multimedia.len());
         println!("----------------------");
+    }
+}
+
+impl Parse for GedcomData {
+    /// Does the actual parsing of the record.
+    fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
+        loop {
+            // TODO is this necessary?
+            let current_level = match tokenizer.current_token {
+                Token::Level(n) => n,
+                _ => panic!(
+                    "{} Expected Level, found {:?}",
+                    dbg(tokenizer),
+                    tokenizer.current_token
+                ),
+            };
+
+            tokenizer.next_token();
+
+            let mut pointer: Option<String> = None;
+            if let Token::Pointer(xref) = &tokenizer.current_token {
+                pointer = Some(xref.to_string());
+                tokenizer.next_token();
+            }
+
+            if let Token::Tag(tag) = &tokenizer.current_token {
+                match tag.as_str() {
+                    "HEAD" => self.header = Some(Header::new(tokenizer, level)),
+                    "FAM" => self.add_family(Family::new(tokenizer, level, pointer)),
+                    "INDI" => {
+                        self.add_individual(Individual::new(tokenizer, current_level, pointer))
+                    }
+                    "REPO" => self.add_repository(Repository::new(tokenizer, current_level, pointer)),
+                    "SOUR" => self.add_source(Source::new(tokenizer, current_level, pointer)),
+                    "SUBM" => self.add_submitter(Submitter::new(tokenizer, level, pointer)),
+                    "OBJE" => self.add_multimedia(Multimedia::new(tokenizer, level, pointer)),
+                    "TRLR" => break,
+                    _ => {
+                        println!("{} Unhandled tag {}", dbg(tokenizer), tag);
+                        tokenizer.next_token();
+                    }
+                };
+            } else if let Token::CustomTag(tag) = &tokenizer.current_token {
+                // TODO
+                let tag_clone = tag.clone();
+                let custom_data = parse_custom_tag(tokenizer, tag_clone);
+                println!(
+                    "{} Skipping top-level custom tag: {:?}",
+                    dbg(tokenizer),
+                    custom_data
+                );
+                while tokenizer.current_token != Token::Level(level) {
+                    tokenizer.next_token();
+                }
+            } else {
+                println!(
+                    "{} Unhandled token {:?}",
+                    dbg(tokenizer),
+                    tokenizer.current_token
+                );
+                tokenizer.next_token();
+            };
+        }
     }
 }

@@ -282,6 +282,6 @@ mod tests {
         let data = parser.parse_record();
 
         let h_note = data.header.unwrap().note.unwrap();
-        assert_eq!(h_note.value.unwrap().chars().count(), 1441);
+        assert_eq!(h_note.value.unwrap().chars().count(), 1440);
     }
 }

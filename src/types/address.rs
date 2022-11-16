@@ -23,17 +23,17 @@ pub struct Address {
 }
 
 impl Address {
-  pub fn new(tokenizer: &mut Tokenizer, level: u8) -> Address {
+    #[must_use]
+    pub fn new(tokenizer: &mut Tokenizer, level: u8) -> Address {
         let mut addr = Address::default();
         addr.parse(tokenizer, level);
         addr
-  }
+    }
 }
 
 impl Parse for Address {
     /// parse handles ADDR tag
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
-
         // skip ADDR tag
         tokenizer.next_token();
 
@@ -67,10 +67,7 @@ impl Parse for Address {
                     _ => panic!("{} Unhandled Address Tag: {}", dbg(tokenizer), tag),
                 },
                 Token::Level(_) => tokenizer.next_token(),
-                _ => panic!(
-                    "Unhandled Address Token: {:?}",
-                    tokenizer.current_token
-                ),
+                _ => panic!("Unhandled Address Token: {:?}", tokenizer.current_token),
             }
         }
 

@@ -66,7 +66,8 @@ impl Parse for Note {
                     "MIME" => self.mime = Some(take_line_value(tokenizer)),
                     "TRANS" => self.translation = Some(Translation::new(tokenizer, level + 1)),
                     "LANG" => self.language = Some(take_line_value(tokenizer)),
-                    "CONT" | "CONC" => {
+                    "CONC" => value.push_str(&take_line_value(tokenizer)),
+                    "CONT" => {
                         value.push('\n');
                         value.push_str(&take_line_value(tokenizer));
                     }

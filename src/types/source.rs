@@ -1,14 +1,14 @@
 use crate::{
     parser::Parse,
     tokenizer::{Token, Tokenizer},
-    types::{Event, RepoCitation},
-    util::{dbg, take_line_value, take_continued_text},
+    types::{Event, RepoCitation, CustomData},
+    util::{dbg, take_continued_text, take_line_value, parse_custom_tag},
 };
 
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
 
-use super::Xref;
+use super::{Xref};
 
 #[derive(Debug)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
@@ -98,6 +98,7 @@ pub struct SourceCitation {
     pub xref: Xref,
     /// Page number of source
     pub page: Option<String>,
+    pub custom_data: Vec<CustomData>,
 }
 
 impl SourceCitation {
@@ -106,9 +107,14 @@ impl SourceCitation {
         let mut citation = SourceCitation {
             xref: take_line_value(tokenizer),
             page: None,
+            custom_data: Vec::new(),
         };
         citation.parse(tokenizer, level);
         citation
+    }
+
+    pub fn add_custom_data(&mut self, data: CustomData) {
+        self.custom_data.push(data)
     }
 }
 
@@ -125,6 +131,10 @@ impl Parse for SourceCitation {
                     "PAGE" => self.page = Some(take_line_value(tokenizer)),
                     _ => panic!("{} Unhandled Citation Tag: {}", dbg(tokenizer), tag),
                 },
+                Token::CustomTag(tag) => {
+                    let tag_clone = tag.clone();
+                    self.add_custom_data(parse_custom_tag(tokenizer, tag_clone))
+                }
                 Token::Level(_) => tokenizer.next_token(),
                 _ => panic!("Unhandled Citation Token: {:?}", tokenizer.current_token),
             }

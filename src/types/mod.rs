@@ -49,15 +49,8 @@ pub use copyright::*;
 mod corporation;
 pub use corporation::*;
 
-// TODO
-/// Multimedia item
-#[derive(Debug)]
-#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-pub struct Media {}
+mod multimedia;
+pub use multimedia::*;
 
-#[derive(Debug)]
-#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-pub struct CustomData {
-    pub tag: String,
-    pub value: String,
-}
+mod custom;
+pub use custom::*;

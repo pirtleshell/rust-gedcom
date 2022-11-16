@@ -7,6 +7,8 @@ use crate::{
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
 
+use super::Note;
+
 /// TODO Date should encompasses a number of date formats, e.g. approximated, period, phrase and range.
 #[derive(Debug, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
@@ -16,6 +18,13 @@ pub struct Date {
 }
 
 impl Date {
+    #[must_use]
+    pub fn new(tokenizer: &mut Tokenizer, level: u8) -> Date {
+        let mut date = Date::default();
+        date.parse(tokenizer, level);
+        date
+    }
+
     /// datetime returns Date and Date.time in a single string.
     pub fn datetime(&self) -> Option<String> {
         match &self.time {
@@ -28,15 +37,6 @@ impl Date {
             }
             None => None,
         }
-    }
-}
-
-impl Date {
-    #[must_use]
-    pub fn new(tokenizer: &mut Tokenizer, level: u8) -> Date {
-        let mut date = Date::default();
-        date.parse(tokenizer, level);
-        date
     }
 }
 
@@ -69,6 +69,40 @@ impl Parse for Date {
 #[derive(Debug, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct ChangeDate {
+    pub value: Option<String>,
     pub date: Option<Date>,
-    pub note: Option<String>,
+    pub note: Option<Note>,
+}
+
+impl ChangeDate {
+    #[must_use]
+    pub fn new(tokenizer: &mut Tokenizer, level: u8) -> ChangeDate {
+        let mut date = ChangeDate::default();
+        date.parse(tokenizer, level);
+        date
+    }
+}
+
+impl Parse for ChangeDate {
+    fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
+        tokenizer.next_token();
+
+        loop {
+            if let Token::Level(cur_level) = tokenizer.current_token {
+                if cur_level <= level {
+                    break;
+                }
+                tokenizer.next_token();
+                match &tokenizer.current_token {
+                    Token::Tag(tag) => match tag.as_str() {
+                        "DATE" => self.date = Some(Date::new(tokenizer, level + 1)),
+                        "NOTE" => self.note = Some(Note::new(tokenizer, level + 1)),
+                        _ => panic!("{} unhandled ChangeDate tag: {}", dbg(tokenizer), tag),
+                    },
+                    Token::Level(_) => tokenizer.next_token(),
+                    _ => panic!("Unexpected ChangeDate token: {:?}", tokenizer.current_token),
+                }
+            }
+        }
+    }
 }

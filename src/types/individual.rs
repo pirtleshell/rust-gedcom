@@ -1,7 +1,7 @@
 use crate::{
     parser::Parse,
     tokenizer::{Token, Tokenizer},
-    types::{event::HasEvents, CustomData, Event},
+    types::{event::HasEvents, CustomData, Event, Multimedia, SourceCitation},
     util::{dbg, parse_custom_tag, take_line_value},
 };
 
@@ -20,6 +20,8 @@ pub struct Individual {
     pub families: Vec<FamilyLink>,
     pub custom_data: Vec<CustomData>,
     pub last_updated: Option<String>,
+    pub source: Vec<SourceCitation>,
+    pub multimedia: Vec<Multimedia>,
     events: Vec<Event>,
 }
 
@@ -34,6 +36,8 @@ impl Individual {
             families: Vec::new(),
             custom_data: Vec::new(),
             last_updated: None,
+            source: Vec::new(),
+            multimedia: Vec::new(),
         };
         indi.parse(tokenizer, level);
         indi
@@ -54,6 +58,14 @@ impl Individual {
 
     pub fn add_custom_data(&mut self, data: CustomData) {
         self.custom_data.push(data)
+    }
+
+    pub fn add_source_citation(&mut self, sour: SourceCitation) {
+        self.source.push(sour);
+    }
+
+    pub fn add_multimedia(&mut self, multimedia: Multimedia) {
+        self.multimedia.push(multimedia);
     }
 }
 
@@ -79,13 +91,14 @@ impl Parse for Individual {
                     "SEX" => self.sex = Gender::new(tokenizer, level + 1),
                     "ADOP" | "BIRT" | "BAPM" | "BARM" | "BASM" | "BLES" | "BURI" | "CENS"
                     | "CHR" | "CHRA" | "CONF" | "CREM" | "DEAT" | "EMIG" | "FCOM" | "GRAD"
-                    | "IMMI" | "NATU" | "ORDN" | "RETI" | "RESI" | "PROB" | "WILL" | "EVEN" => {
+                    | "IMMI" | "NATU" | "ORDN" | "RETI" | "RESI" | "PROB" | "WILL" | "EVEN"
+                    | "MARR" => {
                         let tag_clone = tag.clone();
                         self.add_event(Event::new(tokenizer, level + 1, tag_clone.as_str()));
                     }
                     "FAMC" | "FAMS" => {
                         let tag_clone = tag.clone();
-                        self.add_family(FamilyLink::new(tokenizer, level + 1, tag_clone.as_str())); 
+                        self.add_family(FamilyLink::new(tokenizer, level + 1, tag_clone.as_str()));
                     }
                     "CHAN" => {
                         // assuming it always only has a single DATE subtag
@@ -93,6 +106,11 @@ impl Parse for Individual {
                         tokenizer.next_token(); // DATE tag
                         self.last_updated = Some(take_line_value(tokenizer));
                     }
+                    "SOUR" => {
+                        self.add_source_citation(SourceCitation::new(tokenizer, level + 1));
+                    }
+                    // TODO handle xref
+                    "OBJE" => self.add_multimedia(Multimedia::new(tokenizer, level + 1, None)),
                     _ => panic!("{} Unhandled Individual Tag: {}", dbg(tokenizer), tag),
                 },
                 Token::CustomTag(tag) => {
@@ -173,7 +191,7 @@ pub struct FamilyLink(Xref, FamilyLinkType, Option<Pedigree>);
 impl FamilyLink {
     #[must_use]
     pub fn new(tokenizer: &mut Tokenizer, level: u8, tag: &str) -> FamilyLink {
-let xref = take_line_value(tokenizer);
+        let xref = take_line_value(tokenizer);
         let link_type = match tag {
             "FAMC" => FamilyLinkType::Child,
             "FAMS" => FamilyLinkType::Spouse,
@@ -209,16 +227,13 @@ impl Parse for FamilyLink {
                     _ => panic!("{} Unhandled FamilyLink Tag: {}", dbg(tokenizer), tag),
                 },
                 Token::Level(_) => tokenizer.next_token(),
-                _ => panic!(
-                    "Unhandled FamilyLink Token: {:?}",
-                    tokenizer.current_token
-                ),
+                _ => panic!("Unhandled FamilyLink Token: {:?}", tokenizer.current_token),
             }
         }
     }
 }
 
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct Name {
     pub value: Option<String>,
@@ -227,13 +242,26 @@ pub struct Name {
     pub prefix: Option<String>,
     pub surname_prefix: Option<String>,
     pub suffix: Option<String>,
+    pub source: Vec<SourceCitation>,
 }
 
 impl Name {
     pub fn new(tokenizer: &mut Tokenizer, level: u8) -> Name {
-        let mut name = Name::default();
+        let mut name = Name {
+            value: None,
+            given: None,
+            surname: None,
+            prefix: None,
+            surname_prefix: None,
+            suffix: None,
+            source: Vec::new(),
+        };
         name.parse(tokenizer, level);
         name
+    }
+
+    pub fn add_source_citation(&mut self, sour: SourceCitation) {
+        self.source.push(sour);
     }
 }
 
@@ -254,6 +282,7 @@ impl Parse for Name {
                     "NSFX" => self.suffix = Some(take_line_value(tokenizer)),
                     "SPFX" => self.surname_prefix = Some(take_line_value(tokenizer)),
                     "SURN" => self.surname = Some(take_line_value(tokenizer)),
+                    "SOUR" => self.add_source_citation(SourceCitation::new(tokenizer, level + 1)),
                     _ => panic!("{} Unhandled Name Tag: {}", dbg(tokenizer), tag),
                 },
                 Token::Level(_) => tokenizer.next_token(),
