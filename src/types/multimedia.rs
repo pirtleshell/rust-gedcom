@@ -24,7 +24,7 @@ pub struct Multimedia {
     /// Optional reference to link to this submitter
     pub xref: Option<Xref>,
     pub file: Option<MultimediaFileRefn>,
-    /// The 5.5 spec, page 26, shows FILE as a sub-structure of FILE, but the struct appears as a
+    /// The 5.5 spec, page 26, shows FORM as a sub-structure of FILE, but the struct appears as a
     /// sibling in an Ancestry.com export.
     pub form: Option<MultimediaFormat>,
     /// The 5.5 spec, page 26, shows TITL as a sub-structure of FILE, but the struct appears as a
