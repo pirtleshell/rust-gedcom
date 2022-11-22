@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use gedcom::parser::Parser;
+    use gedcom::GedcomRecord;
 
     #[test]
     fn parses_basic_multimedia_record() {
@@ -20,8 +20,8 @@ mod tests {
             1 TITL In Prague\n\
             0 TRLR";
 
-        let mut parser = Parser::new(sample.chars());
-        let data = parser.parse_record();
+        let mut record = GedcomRecord::new(sample.chars());
+        let data = record.parse_record();
         assert_eq!(data.multimedia.len(), 1);
 
         let obje = &data.multimedia[0];
@@ -66,7 +66,7 @@ mod tests {
             3 CONC ST should not be broken!
             0 TRLR";
 
-        let mut parser = Parser::new(sample.chars());
+        let mut parser = GedcomRecord::new(sample.chars());
         let data = parser.parse_record();
         assert_eq!(data.multimedia.len(), 1);
 

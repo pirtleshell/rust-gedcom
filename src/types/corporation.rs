@@ -1,5 +1,5 @@
 use crate::{
-    parser::Parse,
+    parser::Parser,
     tokenizer::{Token, Tokenizer},
     types::Address,
     util::{dbg, take_line_value},
@@ -35,7 +35,7 @@ impl Corporation {
     }
 }
 
-impl Parse for Corporation {
+impl Parser for Corporation {
     /// parse is for a CORP tag within the SOUR tag of a HEADER
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         self.value = Some(take_line_value(tokenizer));

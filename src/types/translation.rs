@@ -2,7 +2,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    parser::Parse,
+    parser::Parser,
     tokenizer::{Token, Tokenizer},
     util::dbg,
     util::take_line_value,
@@ -31,7 +31,7 @@ impl Translation {
     }
 }
 
-impl Parse for Translation {
+impl Parser for Translation {
     
     ///parse handles the TRAN tag
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {

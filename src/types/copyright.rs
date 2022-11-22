@@ -2,7 +2,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    parser::Parse,
+    parser::Parser,
     tokenizer::{Token, Tokenizer},
     util::{dbg, take_line_value},
 };
@@ -26,7 +26,7 @@ impl Copyright {
     }
 }
 
-impl Parse for Copyright {
+impl Parser for Copyright {
     /// parse the COPR tag
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         self.value = Some(take_line_value(tokenizer));

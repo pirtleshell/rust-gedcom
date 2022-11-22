@@ -1,5 +1,5 @@
 use crate::{
-    parser::Parse,
+    parser::Parser,
     tokenizer::{Token, Tokenizer},
     types::{event::HasEvents, Event},
     util::{dbg, take_line_value},
@@ -55,7 +55,7 @@ impl Family {
     }
 }
 
-impl Parse for Family {
+impl Parser for Family {
     /// parse handles FAM top-level tag
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         // skip over FAM tag name

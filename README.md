@@ -61,7 +61,6 @@ Here are some notes about parsed data & tags. Page references are to the [Gedcom
 ### Top-level tags
 
 * `SUBMISSION_RECORD` - p.28 - No attempt at handling this is made.
-* `NOTE_RECORD` - p.27 - Notes (`NOTE`) are also unhandled. (except in header)
 
 Tags for families (`FAM`), individuals (`IND`), repositories (`REPO`), sources (`SOUR`), and submitters (`SUBM`) are handled. Many of the most common sub-tags for these are handled though some may not yet be parsed. Mileage may vary.
 

@@ -1,7 +1,7 @@
 use crate::{
-    parser::Parse,
+    parser::Parser,
     tokenizer::{Token, Tokenizer},
-    types::{SourceCitation, Note, Xref},
+    types::{Note, SourceCitation, Xref},
     util::{dbg, take_line_value},
 };
 
@@ -20,7 +20,7 @@ use super::ChangeDate;
 /// The change and creation dates should be for the OBJE record itself, not the underlying files.
 ///
 /// See https://gedcom.io/specifications/FamilySearchGEDCOMv7.html#MULTIMEDIA_RECORD.
-pub struct Multimedia {
+pub struct MultimediaRecord {
     /// Optional reference to link to this submitter
     pub xref: Option<Xref>,
     pub file: Option<MultimediaFileRefn>,
@@ -37,10 +37,10 @@ pub struct Multimedia {
     pub note_structure: Option<Note>,
 }
 
-impl Multimedia {
+impl MultimediaRecord {
     #[must_use]
-    pub fn new(tokenizer: &mut Tokenizer, level: u8, xref: Option<Xref>) -> Multimedia {
-        let mut obje = Multimedia{
+    pub fn new(tokenizer: &mut Tokenizer, level: u8, xref: Option<Xref>) -> MultimediaRecord {
+        let mut obje = MultimediaRecord {
             xref,
             file: None,
             form: None,
@@ -56,7 +56,7 @@ impl Multimedia {
     }
 }
 
-impl Parse for Multimedia {
+impl Parser for MultimediaRecord {
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         // skip current line
         tokenizer.next_token();
@@ -72,21 +72,72 @@ impl Parse for Multimedia {
                     "FILE" => self.file = Some(MultimediaFileRefn::new(tokenizer, level + 1)),
                     "FORM" => self.form = Some(MultimediaFormat::new(tokenizer, level + 1)),
                     "TITL" => self.title = Some(take_line_value(tokenizer)),
-                    "REFN" => self.user_reference_number = Some(UserReferenceNumber::new(tokenizer, level + 1)),
+                    "REFN" => {
+                        self.user_reference_number =
+                            Some(UserReferenceNumber::new(tokenizer, level + 1))
+                    }
                     "RIN" => self.automated_record_id = Some(take_line_value(tokenizer)),
                     "NOTE" => self.note_structure = Some(Note::new(tokenizer, level + 1)),
-                    "SOUR" => self.source_citation = Some(SourceCitation::new(tokenizer, level + 1)),
+                    "SOUR" => {
+                        self.source_citation = Some(SourceCitation::new(tokenizer, level + 1))
+                    }
                     "CHAN" => self.change_date = Some(ChangeDate::new(tokenizer, level + 1)),
-                    _ => panic!(
-                        "{} Unhandled Multimedia Tag: {}",
-                        dbg(tokenizer),
-                        tag
-                    ),
+                    _ => panic!("{} Unhandled Multimedia Tag: {}", dbg(tokenizer), tag),
                 },
-                _ => panic!(
-                    "Unhandled Multimedia Token: {:?}",
-                    tokenizer.current_token
-                ),
+                _ => panic!("Unhandled Multimedia Token: {:?}", tokenizer.current_token),
+            }
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+/// MultimediaLink
+pub struct MultimediaLink {
+    /// Optional reference to link to this submitter
+    pub xref: Option<Xref>,
+    pub file: Option<MultimediaFileRefn>,
+    /// The 5.5 spec, page 26, shows FORM as a sub-structure of FILE, but the struct appears as a
+    /// sibling in an Ancestry.com export.
+    pub form: Option<MultimediaFormat>,
+    /// The 5.5 spec, page 26, shows TITL as a sub-structure of FILE, but the struct appears as a
+    /// sibling in an Ancestry.com export.
+    pub title: Option<String>,
+}
+
+impl MultimediaLink {
+    #[must_use]
+    pub fn new(tokenizer: &mut Tokenizer, level: u8, xref: Option<Xref>) -> MultimediaLink {
+        let mut obje = MultimediaLink {
+            xref,
+            file: None,
+            form: None,
+            title: None,
+        };
+        obje.parse(tokenizer, level);
+        obje
+    }
+}
+
+impl Parser for MultimediaLink {
+    fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
+        // skip current line
+        tokenizer.next_token();
+        loop {
+            if let Token::Level(curl_level) = tokenizer.current_token {
+                if curl_level <= level {
+                    break;
+                }
+            }
+            tokenizer.next_token();
+            match &tokenizer.current_token {
+                Token::Tag(tag) => match tag.as_str() {
+                    "FILE" => self.file = Some(MultimediaFileRefn::new(tokenizer, level + 1)),
+                    "FORM" => self.form = Some(MultimediaFormat::new(tokenizer, level + 1)),
+                    "TITL" => self.title = Some(take_line_value(tokenizer)),
+                    _ => panic!("{} Unhandled Multimedia Tag: {}", dbg(tokenizer), tag),
+                },
+                _ => panic!("Unhandled Multimedia Token: {:?}", tokenizer.current_token),
             }
         }
     }
@@ -113,7 +164,7 @@ impl MultimediaFileRefn {
     }
 }
 
-impl Parse for MultimediaFileRefn {
+impl Parser for MultimediaFileRefn {
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         self.value = Some(take_line_value(tokenizer));
         loop {
@@ -165,7 +216,7 @@ impl MultimediaFormat {
     }
 }
 
-impl Parse for MultimediaFormat {
+impl Parser for MultimediaFormat {
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         self.value = Some(take_line_value(tokenizer));
         loop {
@@ -178,11 +229,7 @@ impl Parse for MultimediaFormat {
             match &tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
                     "TYPE" => self.source_media_type = Some(take_line_value(tokenizer)),
-                    _ => panic!(
-                        "{} Unhandled MultimediaFormat Tag: {}",
-                        dbg(tokenizer),
-                        tag
-                    ),
+                    _ => panic!("{} Unhandled MultimediaFormat Tag: {}", dbg(tokenizer), tag),
                 },
                 _ => panic!(
                     "Unhandled MultimediaFormat Token: {:?}",
@@ -215,7 +262,7 @@ impl UserReferenceNumber {
     }
 }
 
-impl Parse for UserReferenceNumber {
+impl Parser for UserReferenceNumber {
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         self.value = Some(take_line_value(tokenizer));
 

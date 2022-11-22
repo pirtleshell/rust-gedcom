@@ -1,8 +1,10 @@
-use gedcom::parser::Parser;
-use gedcom::GedcomData;
+// use ged::{GedcomRecord, GedcomData};
+
 use std::env;
 use std::fs;
 use std::path::PathBuf;
+
+use gedcom::{GedcomData, GedcomRecord};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -21,7 +23,7 @@ fn main() {
     let data: GedcomData;
 
     if let Ok(contents) = read_relative(filename) {
-        let mut parser = Parser::new(contents.chars());
+        let mut parser = GedcomRecord::new(contents.chars());
         data = parser.parse_record();
 
         println!("Parsing complete!");

@@ -1,5 +1,5 @@
 use crate::{
-    parser::Parse,
+    parser::Parser,
     tokenizer::{Token, Tokenizer},
     util::{dbg, take_line_value},
 };
@@ -31,7 +31,7 @@ impl Repository {
     }
 }
 
-impl Parse for Repository {
+impl Parser for Repository {
     /// Parses REPO top-level tag.
     fn parse(&mut self, tokenizer: &mut crate::tokenizer::Tokenizer, level: u8) {
         // skip REPO tag
@@ -77,7 +77,7 @@ impl RepoCitation {
     }
 }
 
-impl Parse for RepoCitation {
+impl Parser for RepoCitation {
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         loop {
             if let Token::Level(cur_level) = tokenizer.current_token {

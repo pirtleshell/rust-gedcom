@@ -1,5 +1,5 @@
 use crate::{
-    parser::Parse,
+    parser::Parser,
     tokenizer::{Token, Tokenizer},
     types::SourceCitation,
     util::{dbg, take_line_value},
@@ -119,7 +119,7 @@ pub trait HasEvents {
     }
 }
 
-impl Parse for Event {
+impl Parser for Event {
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
 
         tokenizer.next_token();

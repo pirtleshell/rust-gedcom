@@ -1,6 +1,6 @@
 use crate::{
     tokenizer::{Token, Tokenizer},
-    types::CustomData,
+    types::UserDefinedData,
 };
 
 /// Macro for displaying `Option`s in debug mode without the text wrapping.
@@ -38,9 +38,9 @@ pub fn take_line_value(tokenizer: &mut Tokenizer) -> String {
     value
 }
 
-pub fn parse_custom_tag(tokenizer: &mut Tokenizer, tag: String) -> CustomData {
+pub fn parse_custom_tag(tokenizer: &mut Tokenizer, tag: String) -> UserDefinedData {
     let value = take_line_value(tokenizer);
-    CustomData { tag, value }
+    UserDefinedData { tag, value }
 }
 
 /// Takes the value of the current line including handling

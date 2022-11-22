@@ -1,5 +1,5 @@
 use crate::{
-    parser::Parse,
+    parser::Parser,
     tokenizer::{Token, Tokenizer},
     types::{Source, Translation},
     util::dbg,
@@ -47,7 +47,7 @@ impl Note {
     }
 }
 
-impl Parse for Note {
+impl Parser for Note {
     /// parse handles the NOTE tag
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         let mut value = String::new();

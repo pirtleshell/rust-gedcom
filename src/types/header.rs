@@ -1,6 +1,6 @@
 use crate::util::dbg;
 use crate::{
-    parser::Parse,
+    parser::Parser,
     tokenizer::{Token, Tokenizer},
     types::{Copyright, Corporation, Date, Note},
     util::{parse_custom_tag, take_line_value},
@@ -8,7 +8,7 @@ use crate::{
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
 
-use super::CustomData;
+use super::UserDefinedData;
 
 /// Header (tag: HEAD) containing GEDCOM metadata.
 /// See https://gedcom.io/specifications/FamilySearchGEDCOMv7.html#HEADER
@@ -44,7 +44,7 @@ pub struct Header {
     pub note: Option<Note>,
     /// tag: PLAC
     pub place: Option<HeadPlac>,
-    pub custom_data: Vec<CustomData>,
+    pub custom_data: Vec<UserDefinedData>,
 }
 
 impl Header {
@@ -55,12 +55,12 @@ impl Header {
         header
     }
 
-    pub fn add_custom_data(&mut self, data: CustomData) {
+    pub fn add_custom_data(&mut self, data: UserDefinedData) {
         self.custom_data.push(data)
     }
 }
 
-impl Parse for Header {
+impl Parser for Header {
     /// Parses HEAD top-level tag. See
     /// https://gedcom.io/specifications/FamilySearchGEDCOMv7.html#HEADER
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
@@ -89,7 +89,7 @@ impl Parse for Header {
                 Token::CustomTag(tag) => {
                     let tag_clone = tag.clone();
                     self.add_custom_data(parse_custom_tag(tokenizer, tag_clone))
-                }
+                },
                 Token::Level(_) => tokenizer.next_token(),
                 _ => panic!("Unhandled Header Token: {:?}", &tokenizer.current_token),
             }
@@ -118,7 +118,7 @@ impl GedcomDoc {
     }
 }
 
-impl Parse for GedcomDoc {
+impl Parser for GedcomDoc {
     /// parse handles parsing GEDC tag
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         // skip GEDC tag
@@ -176,7 +176,7 @@ impl Encoding {
     }
 }
 
-impl Parse for Encoding {
+impl Parser for Encoding {
     /// parse handles the parsing of the CHARS tag
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         self.value = Some(take_line_value(tokenizer));
@@ -230,7 +230,7 @@ impl HeadSour {
     }
 }
 
-impl Parse for HeadSour {
+impl Parser for HeadSour {
     /// parse handles the SOUR tag in a header
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         self.value = Some(take_line_value(tokenizer));
@@ -278,7 +278,7 @@ impl HeadSourData {
     }
 }
 
-impl Parse for HeadSourData {
+impl Parser for HeadSourData {
     /// parse parses the DATA tag
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         self.value = Some(take_line_value(tokenizer));
@@ -342,7 +342,7 @@ impl HeadPlac {
     }
 }
 
-impl Parse for HeadPlac {
+impl Parser for HeadPlac {
     /// parse handles the PLAC tag when present in header
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
 

@@ -1,8 +1,8 @@
 use crate::{
-    parser::Parse,
+    parser::Parser,
     tokenizer::{Token, Tokenizer},
-    types::Address,
-    util::{dbg, take_line_value},
+    types::{Address, ChangeDate, UserDefinedData, MultimediaLink, Note},
+    util::{dbg, parse_custom_tag, take_line_value},
 };
 
 #[cfg(feature = "json")]
@@ -10,7 +10,10 @@ use serde::{Deserialize, Serialize};
 
 type Xref = String;
 
-/// Submitter of the data, ie. who reported the genealogy fact
+/// The submitter record identifies an individual or organization that contributed information
+/// contained in the GEDCOM transmission. All records in the transmission are assumed to be
+/// submitted by the SUBMITTER referenced in the HEADer, unless a SUBMitter reference inside a
+/// specific record points at a different SUBMITTER record.
 #[derive(Debug, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct Submitter {
@@ -20,10 +23,24 @@ pub struct Submitter {
     pub name: Option<String>,
     /// Physical address of the submitter
     pub address: Option<Address>,
+    /// A multimedia asset linked to a fact
+    pub multimedia: Vec<MultimediaLink>,
+    /// Language preference
+    pub language: Option<String>,
+    /// A registered number of a submitter of Ancestral File data. This number is used in
+    /// subsequent submissions or inquiries by the submitter for identification purposes.
+    pub registered_refn: Option<String>,
+    /// A unique record identification number assigned to the record by the source system. This
+    /// number is intended to serve as a more sure means of identification of a record for
+    /// reconciling differences in data between two interfacing systems.
+    pub automated_record_id: Option<String>,
+    /// Date of the last change to the record
+    pub change_date: Option<ChangeDate>,
+    /// Note provided by submitter about the enclosing data
+    pub note: Option<Note>,
     /// Phone number of the submitter
     pub phone: Option<String>,
-    /// TODO
-    pub language: Option<String>,
+    pub custom_data: Vec<UserDefinedData>,
 }
 
 impl Submitter {
@@ -35,27 +52,50 @@ impl Submitter {
         subm.parse(tokenizer, level);
         subm
     }
+
+    /// Adds a `Multimedia` to the tree
+    pub fn add_multimedia(&mut self, multimedia: MultimediaLink) {
+        self.multimedia.push(multimedia);
+    }
+
+
+    ///
+    pub fn add_custom_data(&mut self, data: UserDefinedData) {
+        self.custom_data.push(data)
+    }
 }
 
-impl Parse for Submitter {
+impl Parser for Submitter {
     /// Parse handles SUBM top-level tag
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
-
         // skip over SUBM tag name
         tokenizer.next_token();
 
         while tokenizer.current_token != Token::Level(level) {
+            let mut pointer: Option<String> = None;
+            if let Token::Pointer(xref) = &tokenizer.current_token {
+                pointer = Some(xref.to_string());
+                tokenizer.next_token();
+            }
+
             match &tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
                     "NAME" => self.name = Some(take_line_value(tokenizer)),
                     "ADDR" => self.address = Some(Address::new(tokenizer, level + 1)),
-                    "PHON" => self.phone = Some(take_line_value(tokenizer)),
+                    "OBJE" => {
+                        self.add_multimedia(MultimediaLink::new(tokenizer, level + 1, pointer))
+                    }
                     "LANG" => self.language = Some(take_line_value(tokenizer)),
-                    // TODO
-                    // "CHAN" => submitter.change_date = Some(take_line_value(&mut self.tokenizer)),
+                    "NOTE" => self.note = Some(Note::new(tokenizer, level + 1)),
+                    "CHAN" => self.change_date = Some(ChangeDate::new(tokenizer, level + 1)),
+                    "PHON" => self.phone = Some(take_line_value(tokenizer)),
                     _ => panic!("{} Unhandled Submitter Tag: {}", dbg(tokenizer), tag),
                 },
                 Token::Level(_) => tokenizer.next_token(),
+                Token::CustomTag(tag) => {
+                    let tag_clone = tag.clone();
+                    self.add_custom_data(parse_custom_tag(tokenizer, tag_clone));
+                }
                 _ => panic!("Unhandled Submitter Token: {:?}", tokenizer.current_token),
             }
         }

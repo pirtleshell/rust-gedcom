@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use gedcom::parser::Parser;
+    use gedcom::GedcomRecord;
 
     #[test]
     fn parse_head_gedc() {
@@ -11,7 +11,7 @@ mod tests {
             2 FORM LINEAGE-LINKED\n\
             0 TRLR";
 
-        let mut parser = Parser::new(sample.chars());
+        let mut parser = GedcomRecord::new(sample.chars());
         let data = parser.parse_record();
 
         let head_gedc = data.header.unwrap().gedcom.unwrap();
@@ -45,7 +45,7 @@ mod tests {
             3 COPR Copyright of source data\n\
             0 TRLR";
 
-        let mut parser = Parser::new(sample.chars());
+        let mut parser = GedcomRecord::new(sample.chars());
         let data = parser.parse_record();
 
         let sour = data.header.unwrap().source.unwrap();
@@ -94,7 +94,7 @@ mod tests {
             1 DEST Destination of transmission\n\
             0 TRLR";
 
-        let mut parser = Parser::new(sample.chars());
+        let mut parser = GedcomRecord::new(sample.chars());
         let data = parser.parse_record();
 
         assert_eq!(
@@ -113,7 +113,7 @@ mod tests {
             2 TIME 13:57:24.80\n\
             0 TRLR";
 
-        let mut parser = Parser::new(sample.chars());
+        let mut parser = GedcomRecord::new(sample.chars());
         let data = parser.parse_record();
 
         let h_date = data.header.unwrap().date.unwrap();
@@ -132,7 +132,7 @@ mod tests {
             1 FILE ALLGED.GED\n\
             0 TRLR";
 
-        let mut parser = Parser::new(sample.chars());
+        let mut parser = GedcomRecord::new(sample.chars());
         let data = parser.parse_record();
 
         let h_subm = data.header.unwrap().submitter_tag.unwrap();
@@ -150,7 +150,7 @@ mod tests {
             1 FILE ALLGED.GED\n\
             0 TRLR";
 
-        let mut parser = Parser::new(sample.chars());
+        let mut parser = GedcomRecord::new(sample.chars());
         let data = parser.parse_record();
 
         let h_subn = data.header.unwrap().submission_tag.unwrap();
@@ -168,7 +168,7 @@ mod tests {
             1 FILE ALLGED.GED\n\
             0 TRLR";
 
-        let mut parser = Parser::new(sample.chars());
+        let mut parser = GedcomRecord::new(sample.chars());
         let data = parser.parse_record();
 
         let h_file = data.header.unwrap().filename.unwrap();
@@ -185,7 +185,7 @@ mod tests {
             2 CONT You can use and distribute this file freely as long as you do not charge for it.\n\
             0 TRLR";
 
-        let mut parser = Parser::new(sample.chars());
+        let mut parser = GedcomRecord::new(sample.chars());
         let data = parser.parse_record();
 
         let h_copr = data.header.unwrap().copyright.unwrap();
@@ -206,7 +206,7 @@ mod tests {
             2 VERS Version number of ASCII (whatever it means)\n\
             0 TRLR";
 
-        let mut parser = Parser::new(sample.chars());
+        let mut parser = GedcomRecord::new(sample.chars());
         let data = parser.parse_record();
 
         let h_char = data.header.unwrap().encoding.unwrap();
@@ -226,7 +226,7 @@ mod tests {
             1 LANG language
             0 TRLR";
 
-        let mut parser = Parser::new(sample.chars());
+        let mut parser = GedcomRecord::new(sample.chars());
         let data = parser.parse_record();
 
         let h_lang = data.header.unwrap().language.unwrap();
@@ -243,7 +243,7 @@ mod tests {
             2 FORM City, County, State, Country\n\
             0 TRLR";
 
-        let mut parser = Parser::new(sample.chars());
+        let mut parser = GedcomRecord::new(sample.chars());
         let data = parser.parse_record();
 
         let h_plac = data.header.unwrap().place.unwrap();
@@ -278,7 +278,7 @@ mod tests {
             2 CONC ST should not be broken!\n\
             0 TRLR";
 
-        let mut parser = Parser::new(sample.chars());
+        let mut parser = GedcomRecord::new(sample.chars());
         let data = parser.parse_record();
 
         let h_note = data.header.unwrap().note.unwrap();

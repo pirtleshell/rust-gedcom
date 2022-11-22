@@ -1,7 +1,7 @@
 use crate::{
-    parser::Parse,
+    parser::Parser,
     tokenizer::{Token, Tokenizer},
-    types::{event::HasEvents, CustomData, Event, Multimedia, SourceCitation},
+    types::{event::HasEvents, UserDefinedData, Event, MultimediaRecord, SourceCitation},
     util::{dbg, parse_custom_tag, take_line_value},
 };
 
@@ -18,10 +18,10 @@ pub struct Individual {
     pub name: Option<Name>,
     pub sex: Gender,
     pub families: Vec<FamilyLink>,
-    pub custom_data: Vec<CustomData>,
+    pub custom_data: Vec<UserDefinedData>,
     pub last_updated: Option<String>,
     pub source: Vec<SourceCitation>,
-    pub multimedia: Vec<Multimedia>,
+    pub multimedia: Vec<MultimediaRecord>,
     events: Vec<Event>,
 }
 
@@ -56,7 +56,7 @@ impl Individual {
         }
     }
 
-    pub fn add_custom_data(&mut self, data: CustomData) {
+    pub fn add_custom_data(&mut self, data: UserDefinedData) {
         self.custom_data.push(data)
     }
 
@@ -64,7 +64,7 @@ impl Individual {
         self.source.push(sour);
     }
 
-    pub fn add_multimedia(&mut self, multimedia: Multimedia) {
+    pub fn add_multimedia(&mut self, multimedia: MultimediaRecord) {
         self.multimedia.push(multimedia);
     }
 }
@@ -78,7 +78,7 @@ impl HasEvents for Individual {
     }
 }
 
-impl Parse for Individual {
+impl Parser for Individual {
     /// parse handles the INDI top-level tag
     fn parse(&mut self, tokenizer: &mut crate::tokenizer::Tokenizer, level: u8) {
         // skip over INDI tag name
@@ -110,7 +110,7 @@ impl Parse for Individual {
                         self.add_source_citation(SourceCitation::new(tokenizer, level + 1));
                     }
                     // TODO handle xref
-                    "OBJE" => self.add_multimedia(Multimedia::new(tokenizer, level + 1, None)),
+                    "OBJE" => self.add_multimedia(MultimediaRecord::new(tokenizer, level + 1, None)),
                     _ => panic!("{} Unhandled Individual Tag: {}", dbg(tokenizer), tag),
                 },
                 Token::CustomTag(tag) => {
@@ -142,7 +142,7 @@ impl Gender {
     }
 }
 
-impl Parse for Gender {
+impl Parser for Gender {
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         tokenizer.next_token();
         if let Token::LineValue(gender_string) = &tokenizer.current_token {
@@ -213,7 +213,7 @@ impl FamilyLink {
     }
 }
 
-impl Parse for FamilyLink {
+impl Parser for FamilyLink {
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         loop {
             if let Token::Level(cur_level) = tokenizer.current_token {
@@ -265,7 +265,7 @@ impl Name {
     }
 }
 
-impl Parse for Name {
+impl Parser for Name {
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         self.value = Some(take_line_value(tokenizer));
 

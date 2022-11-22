@@ -1,5 +1,5 @@
 use crate::{
-    parser::Parse,
+    parser::Parser,
     tokenizer::{Token, Tokenizer},
     util::{dbg, take_line_value},
 };
@@ -40,7 +40,7 @@ impl Date {
     }
 }
 
-impl Parse for Date {
+impl Parser for Date {
     /// parse handles the DATE tag
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         self.value = Some(take_line_value(tokenizer));
@@ -83,7 +83,7 @@ impl ChangeDate {
     }
 }
 
-impl Parse for ChangeDate {
+impl Parser for ChangeDate {
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         tokenizer.next_token();
 

@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 use crate::{
-    parser::Parse,
+    parser::Parser,
     tokenizer::{Token, Tokenizer},
     util::{dbg, take_line_value},
 };
@@ -31,7 +31,7 @@ impl Address {
     }
 }
 
-impl Parse for Address {
+impl Parser for Address {
     /// parse handles ADDR tag
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         // skip ADDR tag

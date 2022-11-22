@@ -1,7 +1,7 @@
 use crate::{
-    parser::Parse,
+    parser::Parser,
     tokenizer::{Token, Tokenizer},
-    types::{Event, RepoCitation, CustomData},
+    types::{Event, RepoCitation, UserDefinedData},
     util::{dbg, take_continued_text, take_line_value, parse_custom_tag},
 };
 
@@ -43,7 +43,7 @@ impl Source {
     }
 }
 
-impl Parse for Source {
+impl Parser for Source {
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         // skip SOUR tag
         tokenizer.next_token();
@@ -98,7 +98,7 @@ pub struct SourceCitation {
     pub xref: Xref,
     /// Page number of source
     pub page: Option<String>,
-    pub custom_data: Vec<CustomData>,
+    pub custom_data: Vec<UserDefinedData>,
 }
 
 impl SourceCitation {
@@ -113,12 +113,12 @@ impl SourceCitation {
         citation
     }
 
-    pub fn add_custom_data(&mut self, data: CustomData) {
+    pub fn add_custom_data(&mut self, data: UserDefinedData) {
         self.custom_data.push(data)
     }
 }
 
-impl Parse for SourceCitation {
+impl Parser for SourceCitation {
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         loop {
             if let Token::Level(cur_level) = tokenizer.current_token {
