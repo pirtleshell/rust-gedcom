@@ -2,7 +2,6 @@ use crate::{
     parser::Parser,
     tokenizer::{Token, Tokenizer},
     types::{event::HasEvents, UserDefinedData, Event, MultimediaRecord, SourceCitation},
-    util::{dbg, parse_custom_tag, take_line_value},
 };
 
 #[cfg(feature = "json")]
@@ -104,18 +103,18 @@ impl Parser for Individual {
                         // assuming it always only has a single DATE subtag
                         tokenizer.next_token(); // level
                         tokenizer.next_token(); // DATE tag
-                        self.last_updated = Some(take_line_value(tokenizer));
+                        self.last_updated = Some(tokenizer.take_line_value());
                     }
                     "SOUR" => {
                         self.add_source_citation(SourceCitation::new(tokenizer, level + 1));
                     }
                     // TODO handle xref
                     "OBJE" => self.add_multimedia(MultimediaRecord::new(tokenizer, level + 1, None)),
-                    _ => panic!("{} Unhandled Individual Tag: {}", dbg(tokenizer), tag),
+                    _ => panic!("{} Unhandled Individual Tag: {}", tokenizer.debug(), tag),
                 },
                 Token::CustomTag(tag) => {
                     let tag_clone = tag.clone();
-                    self.add_custom_data(parse_custom_tag(tokenizer, tag_clone))
+                    self.add_custom_data(tokenizer.parse_custom_tag(tag_clone))
                 }
                 Token::Level(_) => tokenizer.next_token(),
                 _ => panic!("Unhandled Individual Token: {:?}", tokenizer.current_token),
@@ -153,7 +152,7 @@ impl Parser for Gender {
                 "U" => Gender::Unknown,
                 _ => panic!(
                     "{} Unknown gender value {} ({})",
-                    dbg(tokenizer),
+                    tokenizer.debug(),
                     gender_string,
                     level
                 ),
@@ -191,7 +190,7 @@ pub struct FamilyLink(Xref, FamilyLinkType, Option<Pedigree>);
 impl FamilyLink {
     #[must_use]
     pub fn new(tokenizer: &mut Tokenizer, level: u8, tag: &str) -> FamilyLink {
-        let xref = take_line_value(tokenizer);
+        let xref = tokenizer.take_line_value();
         let link_type = match tag {
             "FAMC" => FamilyLinkType::Child,
             "FAMS" => FamilyLinkType::Spouse,
@@ -223,8 +222,8 @@ impl Parser for FamilyLink {
             }
             match &tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
-                    "PEDI" => self.set_pedigree(take_line_value(tokenizer).as_str()),
-                    _ => panic!("{} Unhandled FamilyLink Tag: {}", dbg(tokenizer), tag),
+                    "PEDI" => self.set_pedigree(tokenizer.take_line_value().as_str()),
+                    _ => panic!("{} Unhandled FamilyLink Tag: {}", tokenizer.debug(), tag),
                 },
                 Token::Level(_) => tokenizer.next_token(),
                 _ => panic!("Unhandled FamilyLink Token: {:?}", tokenizer.current_token),
@@ -267,7 +266,7 @@ impl Name {
 
 impl Parser for Name {
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
-        self.value = Some(take_line_value(tokenizer));
+        self.value = Some(tokenizer.take_line_value());
 
         loop {
             if let Token::Level(cur_level) = tokenizer.current_token {
@@ -277,13 +276,13 @@ impl Parser for Name {
             }
             match &tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
-                    "GIVN" => self.given = Some(take_line_value(tokenizer)),
-                    "NPFX" => self.prefix = Some(take_line_value(tokenizer)),
-                    "NSFX" => self.suffix = Some(take_line_value(tokenizer)),
-                    "SPFX" => self.surname_prefix = Some(take_line_value(tokenizer)),
-                    "SURN" => self.surname = Some(take_line_value(tokenizer)),
+                    "GIVN" => self.given = Some(tokenizer.take_line_value()),
+                    "NPFX" => self.prefix = Some(tokenizer.take_line_value()),
+                    "NSFX" => self.suffix = Some(tokenizer.take_line_value()),
+                    "SPFX" => self.surname_prefix = Some(tokenizer.take_line_value()),
+                    "SURN" => self.surname = Some(tokenizer.take_line_value()),
                     "SOUR" => self.add_source_citation(SourceCitation::new(tokenizer, level + 1)),
-                    _ => panic!("{} Unhandled Name Tag: {}", dbg(tokenizer), tag),
+                    _ => panic!("{} Unhandled Name Tag: {}", tokenizer.debug(), tag),
                 },
                 Token::Level(_) => tokenizer.next_token(),
                 _ => panic!("Unhandled Name Token: {:?}", tokenizer.current_token),

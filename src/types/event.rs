@@ -2,7 +2,6 @@ use crate::{
     parser::Parser,
     tokenizer::{Token, Tokenizer},
     types::SourceCitation,
-    util::{dbg, take_line_value},
 };
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
@@ -133,10 +132,10 @@ impl Parser for Event {
 
             match &tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
-                    "DATE" => self.date = Some(take_line_value(tokenizer)),
-                    "PLAC" => self.place = Some(take_line_value(tokenizer)),
+                    "DATE" => self.date = Some(tokenizer.take_line_value()),
+                    "PLAC" => self.place = Some(tokenizer.take_line_value()),
                     "SOUR" => self.add_citation(SourceCitation::new(tokenizer, level + 1)),
-                    _ => panic!("{} Unhandled Event Tag: {}", dbg(tokenizer), tag),
+                    _ => panic!("{} Unhandled Event Tag: {}", tokenizer.debug(), tag),
                 },
                 Token::Level(_) => tokenizer.next_token(),
                 _ => panic!("Unhandled Event Token: {:?}", tokenizer.current_token),

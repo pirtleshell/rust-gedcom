@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 use crate::{
     parser::Parser,
     tokenizer::{Token, Tokenizer},
-    util::{dbg, take_line_value},
 };
 
 /// A copyright statement, as appropriate for the copyright laws applicable to this data.
@@ -29,7 +28,7 @@ impl Copyright {
 impl Parser for Copyright {
     /// parse the COPR tag
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
-        self.value = Some(take_line_value(tokenizer));
+        self.value = Some(tokenizer.take_line_value());
 
         loop {
             if let Token::Level(cur_level) = tokenizer.current_token {
@@ -39,9 +38,9 @@ impl Parser for Copyright {
             }
             match &tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
-                    "CONT" => self.continued = Some(take_line_value(tokenizer)),
-                    "CONC" => self.continued = Some(take_line_value(tokenizer)),
-                    _ => panic!("{} unhandled COPR tag in header: {}", dbg(&tokenizer), tag),
+                    "CONT" => self.continued = Some(tokenizer.take_line_value()),
+                    "CONC" => self.continued = Some(tokenizer.take_line_value()),
+                    _ => panic!("{} unhandled COPR tag in header: {}", tokenizer.debug(), tag),
                 },
                 Token::Level(_) => tokenizer.next_token(),
                 _ => panic!("Unhandled tag in COPR: {:?}", tokenizer.current_token),

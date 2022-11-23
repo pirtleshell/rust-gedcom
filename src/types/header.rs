@@ -1,9 +1,7 @@
-use crate::util::dbg;
 use crate::{
     parser::Parser,
     tokenizer::{Token, Tokenizer},
     types::{Copyright, Corporation, Date, Note},
-    util::{parse_custom_tag, take_line_value},
 };
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
@@ -74,21 +72,21 @@ impl Parser for Header {
                 Token::Tag(tag) => match tag.as_str() {
                     "GEDC" => self.gedcom = Some(GedcomDoc::new(tokenizer, 1)),
                     "SOUR" => self.source = Some(HeadSour::new(tokenizer, 1)),
-                    "DEST" => self.destination = Some(take_line_value(tokenizer)),
+                    "DEST" => self.destination = Some(tokenizer.take_line_value()),
                     "DATE" => self.date = Some(Date::new(tokenizer, 1)),
-                    "SUBM" => self.submitter_tag = Some(take_line_value(tokenizer)),
-                    "SUBN" => self.submission_tag = Some(take_line_value(tokenizer)),
-                    "FILE" => self.filename = Some(take_line_value(tokenizer)),
+                    "SUBM" => self.submitter_tag = Some(tokenizer.take_line_value()),
+                    "SUBN" => self.submission_tag = Some(tokenizer.take_line_value()),
+                    "FILE" => self.filename = Some(tokenizer.take_line_value()),
                     "COPR" => self.copyright = Some(Copyright::new(tokenizer, 1)),
                     "CHAR" => self.encoding = Some(Encoding::new(tokenizer, 1)),
-                    "LANG" => self.language = Some(take_line_value(tokenizer)),
+                    "LANG" => self.language = Some(tokenizer.take_line_value()),
                     "NOTE" => self.note = Some(Note::new(tokenizer, 1)),
                     "PLAC" => self.place = Some(HeadPlac::new(tokenizer, 1)),
-                    _ => panic!("{} Unhandled Header Tag: {}", dbg(tokenizer), tag),
+                    _ => panic!("{} Unhandled Header Tag: {}", tokenizer.debug(), tag),
                 },
                 Token::CustomTag(tag) => {
                     let tag_clone = tag.clone();
-                    self.add_custom_data(parse_custom_tag(tokenizer, tag_clone))
+                    self.add_custom_data(tokenizer.parse_custom_tag(tag_clone))
                 },
                 Token::Level(_) => tokenizer.next_token(),
                 _ => panic!("Unhandled Header Token: {:?}", &tokenizer.current_token),
@@ -133,10 +131,10 @@ impl Parser for GedcomDoc {
 
             match &tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
-                    "VERS" => self.version = Some(take_line_value(tokenizer)),
+                    "VERS" => self.version = Some(tokenizer.take_line_value()),
                     // this is the only value that makes sense. warn them otherwise.
                     "FORM" => {
-                        let form = take_line_value(tokenizer);
+                        let form = tokenizer.take_line_value();
                         if &form.to_uppercase() != "LINEAGE-LINKED" {
                             println!(
                                 "WARNING: Unrecognized GEDCOM form. Expected LINEAGE-LINKED, found {}"
@@ -144,12 +142,12 @@ impl Parser for GedcomDoc {
                         }
                         self.form = Some(form);
                     }
-                    _ => panic!("{} Unhandled GEDC Tag: {}", dbg(&tokenizer), tag),
+                    _ => panic!("{} Unhandled GEDC Tag: {}", tokenizer.debug(), tag),
                 },
                 Token::Level(_) => tokenizer.next_token(),
                 _ => panic!(
                     "{} Unexpected GEDC Token: {:?}",
-                    dbg(&tokenizer),
+                    tokenizer.debug(),
                     &tokenizer.current_token
                 ),
             }
@@ -179,7 +177,7 @@ impl Encoding {
 impl Parser for Encoding {
     /// parse handles the parsing of the CHARS tag
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
-        self.value = Some(take_line_value(tokenizer));
+        self.value = Some(tokenizer.take_line_value());
 
         loop {
             if let Token::Level(cur_level) = tokenizer.current_token {
@@ -189,13 +187,13 @@ impl Parser for Encoding {
             }
             match &tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
-                    "VERS" => self.version = Some(take_line_value(tokenizer)),
-                    _ => panic!("{} Unhandled CHAR Tag: {}", dbg(&tokenizer), tag),
+                    "VERS" => self.version = Some(tokenizer.take_line_value()),
+                    _ => panic!("{} Unhandled CHAR Tag: {}", tokenizer.debug(), tag),
                 },
                 Token::Level(_) => tokenizer.next_token(),
                 _ => panic!(
                     "{} Unexpected CHAR Token: {:?}",
-                    dbg(&tokenizer),
+                    tokenizer.debug(),
                     &tokenizer.current_token
                 ),
             }
@@ -233,7 +231,7 @@ impl HeadSour {
 impl Parser for HeadSour {
     /// parse handles the SOUR tag in a header
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
-        self.value = Some(take_line_value(tokenizer));
+        self.value = Some(tokenizer.take_line_value());
 
         loop {
             if let Token::Level(cur_level) = tokenizer.current_token {
@@ -243,11 +241,11 @@ impl Parser for HeadSour {
             }
             match &tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
-                    "VERS" => self.version = Some(take_line_value(tokenizer)),
-                    "NAME" => self.name = Some(take_line_value(tokenizer)),
+                    "VERS" => self.version = Some(tokenizer.take_line_value()),
+                    "NAME" => self.name = Some(tokenizer.take_line_value()),
                     "CORP" => self.corporation = Some(Corporation::new(tokenizer, level + 1)),
                     "DATA" => self.data = Some(HeadSourData::new(tokenizer, level + 1)),
-                    _ => panic!("{} Unhandled CHAR Tag: {}", dbg(tokenizer), tag),
+                    _ => panic!("{} Unhandled CHAR Tag: {}", tokenizer.debug(), tag),
                 },
                 Token::Level(_) => tokenizer.next_token(),
                 _ => panic!("Unexpected SOUR Token: {:?}", tokenizer.current_token),
@@ -281,7 +279,7 @@ impl HeadSourData {
 impl Parser for HeadSourData {
     /// parse parses the DATA tag
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
-        self.value = Some(take_line_value(tokenizer));
+        self.value = Some(tokenizer.take_line_value());
 
         loop {
             if let Token::Level(cur_level) = tokenizer.current_token {
@@ -293,7 +291,7 @@ impl Parser for HeadSourData {
                 Token::Tag(tag) => match tag.as_str() {
                     "DATE" => self.date = Some(Date::new(tokenizer, level + 1)),
                     "COPR" => self.copyright = Some(Copyright::new(tokenizer, level + 1)),
-                    _ => panic!("{} unhandled DATA tag in header: {}", dbg(tokenizer), tag),
+                    _ => panic!("{} unhandled DATA tag in header: {}", tokenizer.debug(), tag),
                 },
                 Token::Level(_) => tokenizer.next_token(),
                 _ => panic!(
@@ -358,7 +356,7 @@ impl Parser for HeadPlac {
             match &tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
                     "FORM" => {
-                        let form = take_line_value(tokenizer);
+                        let form = tokenizer.take_line_value();
                         let jurisdictional_titles = form.split(",");
 
                         for t in jurisdictional_titles {
@@ -366,7 +364,7 @@ impl Parser for HeadPlac {
                             self.push_jurisdictional_title(v.to_string());
                         }
                     }
-                    _ => panic!("{} Unhandled PLAC tag in header: {}", dbg(&tokenizer), tag),
+                    _ => panic!("{} Unhandled PLAC tag in header: {}", tokenizer.debug(), tag),
                 },
                 Token::Level(_) => tokenizer.next_token(),
                 _ => panic!(

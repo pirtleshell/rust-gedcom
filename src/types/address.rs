@@ -5,7 +5,6 @@ use std::fmt;
 use crate::{
     parser::Parser,
     tokenizer::{Token, Tokenizer},
-    util::{dbg, take_line_value},
 };
 
 /// Physical address at which a fact occurs
@@ -55,16 +54,16 @@ impl Parser for Address {
                 Token::Tag(tag) => match tag.as_str() {
                     "CONT" | "CONC" => {
                         value.push('\n');
-                        value.push_str(&take_line_value(tokenizer));
+                        value.push_str(&tokenizer.take_line_value());
                     }
-                    "ADR1" => self.adr1 = Some(take_line_value(tokenizer)),
-                    "ADR2" => self.adr2 = Some(take_line_value(tokenizer)),
-                    "ADR3" => self.adr3 = Some(take_line_value(tokenizer)),
-                    "CITY" => self.city = Some(take_line_value(tokenizer)),
-                    "STAE" => self.state = Some(take_line_value(tokenizer)),
-                    "POST" => self.post = Some(take_line_value(tokenizer)),
-                    "CTRY" => self.country = Some(take_line_value(tokenizer)),
-                    _ => panic!("{} Unhandled Address Tag: {}", dbg(tokenizer), tag),
+                    "ADR1" => self.adr1 = Some(tokenizer.take_line_value()),
+                    "ADR2" => self.adr2 = Some(tokenizer.take_line_value()),
+                    "ADR3" => self.adr3 = Some(tokenizer.take_line_value()),
+                    "CITY" => self.city = Some(tokenizer.take_line_value()),
+                    "STAE" => self.state = Some(tokenizer.take_line_value()),
+                    "POST" => self.post = Some(tokenizer.take_line_value()),
+                    "CTRY" => self.country = Some(tokenizer.take_line_value()),
+                    _ => panic!("{} Unhandled Address Tag: {}", tokenizer.debug(), tag),
                 },
                 Token::Level(_) => tokenizer.next_token(),
                 _ => panic!("Unhandled Address Token: {:?}", tokenizer.current_token),

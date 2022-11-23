@@ -20,7 +20,6 @@ This crate contains an optional `"json"` feature that implements serialization &
 
 #[macro_use]
 mod util;
-use util::{dbg, parse_custom_tag};
 
 pub mod tokenizer;
 use tokenizer::{Token, Tokenizer};
@@ -152,7 +151,7 @@ impl Parser for GedcomData {
                 Token::Level(n) => n,
                 _ => panic!(
                     "{} Expected Level, found {:?}",
-                    dbg(tokenizer),
+                    tokenizer.debug(),
                     tokenizer.current_token
                 ),
             };
@@ -180,20 +179,20 @@ impl Parser for GedcomData {
                     "OBJE" => self.add_multimedia(MultimediaRecord::new(tokenizer, level, pointer)),
                     "TRLR" => break,
                     _ => {
-                        println!("{} Unhandled tag {}", dbg(tokenizer), tag);
+                        println!("{} Unhandled tag {}", tokenizer.debug(), tag);
                         tokenizer.next_token();
                     }
                 };
             } else if let Token::CustomTag(tag) = &tokenizer.current_token {
                 let tag_clone = tag.clone();
-                self.add_custom_data(parse_custom_tag(tokenizer, tag_clone));
+                self.add_custom_data(tokenizer.parse_custom_tag(tag_clone));
                 while tokenizer.current_token != Token::Level(level) {
                     tokenizer.next_token();
                 }
             } else {
                 println!(
                     "{} Unhandled token {:?}",
-                    dbg(tokenizer),
+                    tokenizer.debug(),
                     tokenizer.current_token
                 );
                 tokenizer.next_token();

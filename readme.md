@@ -11,7 +11,7 @@
 
 ## About this project
 
-GEDCOM is a file format for sharing genealogical information like family trees! It's being made obsolete by [GEDCOM-X](https://github.com/FamilySearch/gedcomx) but is still widely used in many genealogy programs.
+GEDCOM is a file format for sharing genealogical information like family trees, and it's widely used in many genealogy programs.
 
 I wanted experience playing with parsers and representing tree structures in Rust, and noticed a parser for Rust did not exist. And thus, this project was born! A fun experiment to practice my Rust abilities.
 
@@ -64,7 +64,6 @@ Here are some notes about parsed data & tags. Page references are to the [Gedcom
 * `NOTE_RECORD` - p.27 - Notes (`NOTE`) are also unhandled. (except in header)
 
 Tags for families (`FAM`), individuals (`IND`), repositories (`REPO`), sources (`SOUR`), and submitters (`SUBM`) are handled. Many of the most common sub-tags for these are handled though some may not yet be parsed. Mileage may vary.
-
 
 ## Notes to self
 

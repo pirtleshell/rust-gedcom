@@ -13,6 +13,9 @@ pub use event::{Event, EventType};
 pub mod date;
 pub use date::{ChangeDate, Date};
 
+mod place;
+pub use place::*;
+
 mod address;
 pub use address::*;
 

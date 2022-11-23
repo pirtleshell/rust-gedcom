@@ -2,8 +2,6 @@ use crate::{
     parser::Parser,
     tokenizer::{Token, Tokenizer},
     types::{Source, Translation},
-    util::dbg,
-    util::take_line_value,
 };
 
 #[cfg(feature = "json")]
@@ -52,7 +50,7 @@ impl Parser for Note {
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         let mut value = String::new();
 
-        value.push_str(&take_line_value(tokenizer));
+        value.push_str(&tokenizer.take_line_value());
 
         loop {
             if let Token::Level(cur_level) = tokenizer.current_token {
@@ -63,15 +61,15 @@ impl Parser for Note {
 
             match &tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
-                    "MIME" => self.mime = Some(take_line_value(tokenizer)),
+                    "MIME" => self.mime = Some(tokenizer.take_line_value()),
                     "TRANS" => self.translation = Some(Translation::new(tokenizer, level + 1)),
-                    "LANG" => self.language = Some(take_line_value(tokenizer)),
-                    "CONC" => value.push_str(&take_line_value(tokenizer)),
+                    "LANG" => self.language = Some(tokenizer.take_line_value()),
+                    "CONC" => value.push_str(&tokenizer.take_line_value()),
                     "CONT" => {
                         value.push('\n');
-                        value.push_str(&take_line_value(tokenizer));
+                        value.push_str(&tokenizer.take_line_value());
                     }
-                    _ => panic!("{} unhandled NOTE tag: {}", dbg(&tokenizer), tag),
+                    _ => panic!("{} unhandled NOTE tag: {}", tokenizer.debug(), tag),
                 },
                 Token::Level(_) => tokenizer.next_token(),
                 _ => panic!("Unexpected NOTE token: {:?}", &tokenizer.current_token),

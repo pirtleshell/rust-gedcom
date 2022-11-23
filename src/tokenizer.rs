@@ -1,6 +1,8 @@
 //! Handles the tokenization of a GEDCOM file
 use std::str::Chars;
 
+use crate::types::UserDefinedData;
+
 /// The base enum of Token types
 ///
 /// making use of [GEDCOM Standard Release 5.5.1](https://edge.fscdn.org/assets/img/documents/ged551-5bac5e57fe88dd37df0e153d9c515335.pdf), p.11
@@ -151,5 +153,67 @@ impl<'a> Tokenizer<'a> {
         let is_zero_width_space = self.current_char as u32 == 65279_u32;
         let not_a_newline = self.current_char != '\n';
         (self.current_char.is_whitespace() || is_zero_width_space) && not_a_newline
+    }
+
+    /// Debug function displaying GEDCOM line number of error message.
+    pub fn debug(&self) -> String {
+        format!("line {}:", self.line)
+    }
+
+    /// Grabs and returns to the end of the current line as a String
+    pub fn take_line_value(&mut self) -> String {
+        let value: String;
+        self.next_token();
+
+        if let Token::LineValue(val) = &self.current_token {
+            value = val.to_string();
+        } else {
+            panic!(
+                "{} Expected LineValue, found {:?}",
+                self.debug(),
+                self.current_token
+            );
+        }
+        self.next_token();
+        value
+    }
+
+    /// Takes the value of the current line including handling
+    /// multi-line values from CONT & CONC tags.
+    pub fn take_continued_text(&mut self, level: u8) -> String {
+        let mut value = self.take_line_value();
+
+        loop {
+            if let Token::Level(cur_level) = self.current_token {
+                if cur_level <= level {
+                    break;
+                }
+            }
+            match &self.current_token {
+                Token::Tag(tag) => match tag.as_str() {
+                    "CONT" => {
+                        value.push('\n');
+                        value.push_str(&self.take_line_value())
+                    }
+                    "CONC" => {
+                        value.push(' ');
+                        value.push_str(&self.take_line_value())
+                    }
+                    _ => panic!("{} Unhandled Continuation Tag: {}", self.debug(), tag),
+                },
+                Token::Level(_) => self.next_token(),
+                _ => panic!(
+                    "Unhandled Continuation Token: {:?}",
+                    self.current_token
+                ),
+            }
+        }
+        value
+    }
+
+    /// parse_custom_tag handles User Defined Data. See Gedcom 5.5 spec, p.56
+    pub fn parse_custom_tag(&mut self, tag: String) -> UserDefinedData {
+        let value = self.take_line_value();
+        UserDefinedData { tag, value }
     }
 }

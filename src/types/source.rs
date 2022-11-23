@@ -2,7 +2,6 @@ use crate::{
     parser::Parser,
     tokenizer::{Token, Tokenizer},
     types::{Event, RepoCitation, UserDefinedData},
-    util::{dbg, take_continued_text, take_line_value, parse_custom_tag},
 };
 
 #[cfg(feature = "json")]
@@ -58,16 +57,16 @@ impl Parser for Source {
                 Token::Tag(tag) => match tag.as_str() {
                     "DATA" => tokenizer.next_token(),
                     "EVEN" => {
-                        let events_recorded = take_line_value(tokenizer);
+                        let events_recorded = tokenizer.take_line_value();
                         let mut event = Event::new(tokenizer, level + 2, "OTHER");
                         event.with_source_data(events_recorded);
                         self.data.add_event(event);
                     }
-                    "AGNC" => self.data.agency = Some(take_line_value(tokenizer)),
-                    "ABBR" => self.abbreviation = Some(take_continued_text(tokenizer, level + 1)),
-                    "TITL" => self.title = Some(take_continued_text(tokenizer, level + 1)),
+                    "AGNC" => self.data.agency = Some(tokenizer.take_line_value()),
+                    "ABBR" => self.abbreviation = Some(tokenizer.take_continued_text(level + 1)),
+                    "TITL" => self.title = Some(tokenizer.take_continued_text(level + 1)),
                     "REPO" => self.add_repo_citation(RepoCitation::new(tokenizer, level + 1)),
-                    _ => panic!("{} Unhandled Source Tag: {}", dbg(tokenizer), tag),
+                    _ => panic!("{} Unhandled Source Tag: {}", tokenizer.debug(), tag),
                 },
                 Token::Level(_) => tokenizer.next_token(),
                 _ => panic!("Unhandled Source Token: {:?}", tokenizer.current_token),
@@ -105,7 +104,7 @@ impl SourceCitation {
     #[must_use]
     pub fn new(tokenizer: &mut Tokenizer, level: u8) -> SourceCitation {
         let mut citation = SourceCitation {
-            xref: take_line_value(tokenizer),
+            xref: tokenizer.take_line_value(),
             page: None,
             custom_data: Vec::new(),
         };
@@ -128,12 +127,12 @@ impl Parser for SourceCitation {
             }
             match &tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
-                    "PAGE" => self.page = Some(take_line_value(tokenizer)),
-                    _ => panic!("{} Unhandled Citation Tag: {}", dbg(tokenizer), tag),
+                    "PAGE" => self.page = Some(tokenizer.take_line_value()),
+                    _ => panic!("{} Unhandled Citation Tag: {}", tokenizer.debug(), tag),
                 },
                 Token::CustomTag(tag) => {
                     let tag_clone = tag.clone();
-                    self.add_custom_data(parse_custom_tag(tokenizer, tag_clone))
+                    self.add_custom_data(tokenizer.parse_custom_tag(tag_clone))
                 }
                 Token::Level(_) => tokenizer.next_token(),
                 _ => panic!("Unhandled Citation Token: {:?}", tokenizer.current_token),

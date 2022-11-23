@@ -2,7 +2,6 @@ use crate::{
     parser::Parser,
     tokenizer::{Token, Tokenizer},
     types::{Note, SourceCitation, Xref},
-    util::{dbg, take_line_value},
 };
 
 use super::ChangeDate;
@@ -71,18 +70,18 @@ impl Parser for MultimediaRecord {
                 Token::Tag(tag) => match tag.as_str() {
                     "FILE" => self.file = Some(MultimediaFileRefn::new(tokenizer, level + 1)),
                     "FORM" => self.form = Some(MultimediaFormat::new(tokenizer, level + 1)),
-                    "TITL" => self.title = Some(take_line_value(tokenizer)),
+                    "TITL" => self.title = Some(tokenizer.take_line_value()),
                     "REFN" => {
                         self.user_reference_number =
                             Some(UserReferenceNumber::new(tokenizer, level + 1))
                     }
-                    "RIN" => self.automated_record_id = Some(take_line_value(tokenizer)),
+                    "RIN" => self.automated_record_id = Some(tokenizer.take_line_value()),
                     "NOTE" => self.note_structure = Some(Note::new(tokenizer, level + 1)),
                     "SOUR" => {
                         self.source_citation = Some(SourceCitation::new(tokenizer, level + 1))
                     }
                     "CHAN" => self.change_date = Some(ChangeDate::new(tokenizer, level + 1)),
-                    _ => panic!("{} Unhandled Multimedia Tag: {}", dbg(tokenizer), tag),
+                    _ => panic!("{} Unhandled Multimedia Tag: {}", tokenizer.debug(), tag),
                 },
                 _ => panic!("Unhandled Multimedia Token: {:?}", tokenizer.current_token),
             }
@@ -134,8 +133,8 @@ impl Parser for MultimediaLink {
                 Token::Tag(tag) => match tag.as_str() {
                     "FILE" => self.file = Some(MultimediaFileRefn::new(tokenizer, level + 1)),
                     "FORM" => self.form = Some(MultimediaFormat::new(tokenizer, level + 1)),
-                    "TITL" => self.title = Some(take_line_value(tokenizer)),
-                    _ => panic!("{} Unhandled Multimedia Tag: {}", dbg(tokenizer), tag),
+                    "TITL" => self.title = Some(tokenizer.take_line_value()),
+                    _ => panic!("{} Unhandled Multimedia Tag: {}", tokenizer.debug(), tag),
                 },
                 _ => panic!("Unhandled Multimedia Token: {:?}", tokenizer.current_token),
             }
@@ -166,7 +165,7 @@ impl MultimediaFileRefn {
 
 impl Parser for MultimediaFileRefn {
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
-        self.value = Some(take_line_value(tokenizer));
+        self.value = Some(tokenizer.take_line_value());
         loop {
             if let Token::Level(curl_level) = &tokenizer.current_token {
                 if curl_level <= &level {
@@ -176,11 +175,11 @@ impl Parser for MultimediaFileRefn {
             tokenizer.next_token();
             match &tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
-                    "TITL" => self.title = Some(take_line_value(tokenizer)),
+                    "TITL" => self.title = Some(tokenizer.take_line_value()),
                     "FORM" => self.form = Some(MultimediaFormat::new(tokenizer, level + 1)),
                     _ => panic!(
                         "{} Unhandled MultimediaFileRefn Tag: {}",
-                        dbg(tokenizer),
+                        tokenizer.debug(),
                         tag
                     ),
                 },
@@ -218,7 +217,7 @@ impl MultimediaFormat {
 
 impl Parser for MultimediaFormat {
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
-        self.value = Some(take_line_value(tokenizer));
+        self.value = Some(tokenizer.take_line_value());
         loop {
             if let Token::Level(curl_level) = &tokenizer.current_token {
                 if curl_level <= &level {
@@ -228,8 +227,8 @@ impl Parser for MultimediaFormat {
             tokenizer.next_token();
             match &tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
-                    "TYPE" => self.source_media_type = Some(take_line_value(tokenizer)),
-                    _ => panic!("{} Unhandled MultimediaFormat Tag: {}", dbg(tokenizer), tag),
+                    "TYPE" => self.source_media_type = Some(tokenizer.take_line_value()),
+                    _ => panic!("{} Unhandled MultimediaFormat Tag: {}", tokenizer.debug(), tag),
                 },
                 _ => panic!(
                     "Unhandled MultimediaFormat Token: {:?}",
@@ -264,7 +263,7 @@ impl UserReferenceNumber {
 
 impl Parser for UserReferenceNumber {
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
-        self.value = Some(take_line_value(tokenizer));
+        self.value = Some(tokenizer.take_line_value());
 
         loop {
             if let Token::Level(curl_level) = &tokenizer.current_token {
@@ -274,10 +273,10 @@ impl Parser for UserReferenceNumber {
             }
             match &tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
-                    "TYPE" => self.user_reference_type = Some(take_line_value(tokenizer)),
+                    "TYPE" => self.user_reference_type = Some(tokenizer.take_line_value()),
                     _ => panic!(
                         "{} Unhandled UserReferenceNumber Tag: {}",
-                        dbg(tokenizer),
+                        tokenizer.debug(),
                         tag
                     ),
                 },

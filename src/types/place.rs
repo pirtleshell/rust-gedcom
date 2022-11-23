@@ -1,4 +1,3 @@
-use crate::types::{Address, Date, Note};
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
 

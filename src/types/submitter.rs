@@ -2,7 +2,6 @@ use crate::{
     parser::Parser,
     tokenizer::{Token, Tokenizer},
     types::{Address, ChangeDate, UserDefinedData, MultimediaLink, Note},
-    util::{dbg, parse_custom_tag, take_line_value},
 };
 
 #[cfg(feature = "json")]
@@ -80,21 +79,21 @@ impl Parser for Submitter {
 
             match &tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
-                    "NAME" => self.name = Some(take_line_value(tokenizer)),
+                    "NAME" => self.name = Some(tokenizer.take_line_value()),
                     "ADDR" => self.address = Some(Address::new(tokenizer, level + 1)),
                     "OBJE" => {
                         self.add_multimedia(MultimediaLink::new(tokenizer, level + 1, pointer))
                     }
-                    "LANG" => self.language = Some(take_line_value(tokenizer)),
+                    "LANG" => self.language = Some(tokenizer.take_line_value()),
                     "NOTE" => self.note = Some(Note::new(tokenizer, level + 1)),
                     "CHAN" => self.change_date = Some(ChangeDate::new(tokenizer, level + 1)),
-                    "PHON" => self.phone = Some(take_line_value(tokenizer)),
-                    _ => panic!("{} Unhandled Submitter Tag: {}", dbg(tokenizer), tag),
+                    "PHON" => self.phone = Some(tokenizer.take_line_value()),
+                    _ => panic!("{} Unhandled Submitter Tag: {}", tokenizer.debug(), tag),
                 },
                 Token::Level(_) => tokenizer.next_token(),
                 Token::CustomTag(tag) => {
                     let tag_clone = tag.clone();
-                    self.add_custom_data(parse_custom_tag(tokenizer, tag_clone));
+                    self.add_custom_data(tokenizer.parse_custom_tag(tag_clone));
                 }
                 _ => panic!("Unhandled Submitter Token: {:?}", tokenizer.current_token),
             }

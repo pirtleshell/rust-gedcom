@@ -1,7 +1,6 @@
 use crate::{
     parser::Parser,
     tokenizer::{Token, Tokenizer},
-    util::{dbg, take_line_value},
 };
 
 #[cfg(feature = "json")]
@@ -43,7 +42,7 @@ impl Date {
 impl Parser for Date {
     /// parse handles the DATE tag
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
-        self.value = Some(take_line_value(tokenizer));
+        self.value = Some(tokenizer.take_line_value());
 
         loop {
             if let Token::Level(cur_level) = tokenizer.current_token {
@@ -53,8 +52,8 @@ impl Parser for Date {
             }
             match &tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
-                    "TIME" => self.time = Some(take_line_value(tokenizer)),
-                    _ => panic!("{} unhandled DATE tag: {}", dbg(tokenizer), tag),
+                    "TIME" => self.time = Some(tokenizer.take_line_value()),
+                    _ => panic!("{} unhandled DATE tag: {}", tokenizer.debug(), tag),
                 },
                 Token::Level(_) => tokenizer.next_token(),
                 _ => panic!("Unexpected DATE token: {:?}", tokenizer.current_token),
@@ -97,7 +96,7 @@ impl Parser for ChangeDate {
                     Token::Tag(tag) => match tag.as_str() {
                         "DATE" => self.date = Some(Date::new(tokenizer, level + 1)),
                         "NOTE" => self.note = Some(Note::new(tokenizer, level + 1)),
-                        _ => panic!("{} unhandled ChangeDate tag: {}", dbg(tokenizer), tag),
+                        _ => panic!("{} unhandled ChangeDate tag: {}", tokenizer.debug(), tag),
                     },
                     Token::Level(_) => tokenizer.next_token(),
                     _ => panic!("Unexpected ChangeDate token: {:?}", tokenizer.current_token),

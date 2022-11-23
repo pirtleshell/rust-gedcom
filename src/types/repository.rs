@@ -1,7 +1,6 @@
 use crate::{
     parser::Parser,
     tokenizer::{Token, Tokenizer},
-    util::{dbg, take_line_value},
 };
 
 use super::{Address, Xref};
@@ -45,9 +44,9 @@ impl Parser for Repository {
             }
             match &tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
-                    "NAME" => self.name = Some(take_line_value(tokenizer)),
+                    "NAME" => self.name = Some(tokenizer.take_line_value()),
                     "ADDR" => self.address = Some(Address::new(tokenizer, level + 1)),
-                    _ => panic!("{} Unhandled Repository Tag: {}", dbg(tokenizer), tag),
+                    _ => panic!("{} Unhandled Repository Tag: {}", tokenizer.debug(), tag),
                 },
                 Token::Level(_) => tokenizer.next_token(),
                 _ => panic!("Unhandled Repository Token: {:?}", tokenizer.current_token),
@@ -69,7 +68,7 @@ pub struct RepoCitation {
 impl RepoCitation {
     pub fn new(tokenizer: &mut Tokenizer, level: u8) -> RepoCitation {
         let mut rc = RepoCitation {
-            xref: take_line_value(tokenizer),
+            xref: tokenizer.take_line_value(),
             call_number: None,
         };
         rc.parse(tokenizer, level);
@@ -87,8 +86,8 @@ impl Parser for RepoCitation {
             }
             match &tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
-                    "CALN" => self.call_number = Some(take_line_value(tokenizer)),
-                    _ => panic!("{} Unhandled RepoCitation Tag: {}", dbg(tokenizer), tag),
+                    "CALN" => self.call_number = Some(tokenizer.take_line_value()),
+                    _ => panic!("{} Unhandled RepoCitation Tag: {}", tokenizer.debug(), tag),
                 },
                 Token::Level(_) => tokenizer.next_token(),
                 _ => panic!(

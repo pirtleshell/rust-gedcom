@@ -2,7 +2,6 @@ use crate::{
     parser::Parser,
     tokenizer::{Token, Tokenizer},
     types::{event::HasEvents, Event},
-    util::{dbg, take_line_value},
 };
 
 #[cfg(feature = "json")]
@@ -71,10 +70,10 @@ impl Parser for Family {
             match &tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
                     "MARR" => self.add_event(Event::new(tokenizer, level + 1, "MARR")),
-                    "HUSB" => self.set_individual1(take_line_value(tokenizer)),
-                    "WIFE" => self.set_individual2(take_line_value(tokenizer)),
-                    "CHIL" => self.add_child(take_line_value(tokenizer)),
-                    _ => panic!("{} Unhandled Family Tag: {}", dbg(tokenizer), tag),
+                    "HUSB" => self.set_individual1(tokenizer.take_line_value()),
+                    "WIFE" => self.set_individual2(tokenizer.take_line_value()),
+                    "CHIL" => self.add_child(tokenizer.take_line_value()),
+                    _ => panic!("{} Unhandled Family Tag: {}", tokenizer.debug(), tag),
                 },
                 Token::Level(_) => tokenizer.next_token(),
                 _ => panic!("Unhandled Family Token: {:?}", tokenizer.current_token),
