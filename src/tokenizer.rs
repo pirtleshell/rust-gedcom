@@ -202,10 +202,7 @@ impl<'a> Tokenizer<'a> {
                     _ => panic!("{} Unhandled Continuation Tag: {}", self.debug(), tag),
                 },
                 Token::Level(_) => self.next_token(),
-                _ => panic!(
-                    "Unhandled Continuation Token: {:?}",
-                    self.current_token
-                ),
+                _ => panic!("Unhandled Continuation Token: {:?}", self.current_token),
             }
         }
         value

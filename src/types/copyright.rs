@@ -40,7 +40,11 @@ impl Parser for Copyright {
                 Token::Tag(tag) => match tag.as_str() {
                     "CONT" => self.continued = Some(tokenizer.take_line_value()),
                     "CONC" => self.continued = Some(tokenizer.take_line_value()),
-                    _ => panic!("{} unhandled COPR tag in header: {}", tokenizer.debug(), tag),
+                    _ => panic!(
+                        "{} unhandled COPR tag in header: {}",
+                        tokenizer.debug(),
+                        tag
+                    ),
                 },
                 Token::Level(_) => tokenizer.next_token(),
                 _ => panic!("Unhandled tag in COPR: {:?}", tokenizer.current_token),
