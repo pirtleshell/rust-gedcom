@@ -1,7 +1,7 @@
 use crate::{
     parser::Parser,
     tokenizer::{Token, Tokenizer},
-    types::SourceCitation,
+    types::{ChildToFamilyLink, Note, SourceCitation},
 };
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
@@ -37,6 +37,8 @@ pub struct Event {
     pub event: EventType,
     pub date: Option<String>,
     pub place: Option<String>,
+    pub note: Option<Note>,
+    pub child_to_family_link: Option<ChildToFamilyLink>,
     pub citations: Vec<SourceCitation>,
 }
 
@@ -47,6 +49,8 @@ impl Event {
             event: Self::from_tag(tag),
             date: None,
             place: None,
+            note: None,
+            child_to_family_link: None,
             citations: Vec::new(),
         };
         event.parse(tokenizer, level);
@@ -120,7 +124,6 @@ pub trait HasEvents {
 
 impl Parser for Event {
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
-
         tokenizer.next_token();
 
         loop {
@@ -135,6 +138,11 @@ impl Parser for Event {
                     "DATE" => self.date = Some(tokenizer.take_line_value()),
                     "PLAC" => self.place = Some(tokenizer.take_line_value()),
                     "SOUR" => self.add_citation(SourceCitation::new(tokenizer, level + 1)),
+                    "FAMC" => {
+                        self.child_to_family_link =
+                            Some(ChildToFamilyLink::new(tokenizer, level + 1))
+                    },
+                    "NOTE" => self.note = Some(Note::new(tokenizer, level + 1)),
                     _ => panic!("{} Unhandled Event Tag: {}", tokenizer.debug(), tag),
                 },
                 Token::Level(_) => tokenizer.next_token(),

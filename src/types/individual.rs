@@ -1,7 +1,7 @@
 use crate::{
     parser::Parser,
     tokenizer::{Token, Tokenizer},
-    types::{event::HasEvents, UserDefinedData, Event, MultimediaRecord, SourceCitation},
+    types::{event::HasEvents, Event, MultimediaRecord, Note, SourceCitation, UserDefinedData},
 };
 
 #[cfg(feature = "json")]
@@ -21,7 +21,7 @@ pub struct Individual {
     pub last_updated: Option<String>,
     pub source: Vec<SourceCitation>,
     pub multimedia: Vec<MultimediaRecord>,
-    events: Vec<Event>,
+    pub events: Vec<Event>,
 }
 
 impl Individual {
@@ -109,7 +109,9 @@ impl Parser for Individual {
                         self.add_source_citation(SourceCitation::new(tokenizer, level + 1));
                     }
                     // TODO handle xref
-                    "OBJE" => self.add_multimedia(MultimediaRecord::new(tokenizer, level + 1, None)),
+                    "OBJE" => {
+                        self.add_multimedia(MultimediaRecord::new(tokenizer, level + 1, None))
+                    }
                     _ => panic!("{} Unhandled Individual Tag: {}", tokenizer.debug(), tag),
                 },
                 Token::CustomTag(tag) => {
@@ -240,6 +242,7 @@ pub struct Name {
     pub surname: Option<String>,
     pub prefix: Option<String>,
     pub surname_prefix: Option<String>,
+    pub note: Option<Note>,
     pub suffix: Option<String>,
     pub source: Vec<SourceCitation>,
 }
@@ -252,6 +255,7 @@ impl Name {
             surname: None,
             prefix: None,
             surname_prefix: None,
+            note: None,
             suffix: None,
             source: Vec::new(),
         };
@@ -282,6 +286,7 @@ impl Parser for Name {
                     "SPFX" => self.surname_prefix = Some(tokenizer.take_line_value()),
                     "SURN" => self.surname = Some(tokenizer.take_line_value()),
                     "SOUR" => self.add_source_citation(SourceCitation::new(tokenizer, level + 1)),
+                    "NOTE" => self.note = Some(Note::new(tokenizer, level + 1)),
                     _ => panic!("{} Unhandled Name Tag: {}", tokenizer.debug(), tag),
                 },
                 Token::Level(_) => tokenizer.next_token(),

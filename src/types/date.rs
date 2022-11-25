@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use super::Note;
 
 /// TODO Date should encompasses a number of date formats, e.g. approximated, period, phrase and range.
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct Date {
     pub value: Option<String>,

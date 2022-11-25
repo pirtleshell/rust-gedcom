@@ -56,7 +56,7 @@ impl Parser for Repository {
 }
 
 /// Citation linking a `Source` to a data `Repository`
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct RepoCitation {
     /// Reference to the `Repository`
