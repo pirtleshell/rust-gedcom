@@ -35,8 +35,11 @@ use serde::{Deserialize, Serialize};
 /// let head_date = data.header.unwrap().date.unwrap();
 /// assert_eq!(head_date.value.unwrap(), "2 Oct 2019");
 ///
-/// let resi_date = data.individuals[0].events[0].date.as_ref().unwrap();
-/// assert_eq!(resi_date.value.as_ref().unwrap(), "BEF 1828");
+/// let birt_date = data.individuals[0].events[0].date.as_ref().unwrap();
+/// assert_eq!(birt_date.value.as_ref().unwrap(), "BEF 1828");
+///
+/// let resi_date = data.individuals[0].events[1].date.as_ref().unwrap();
+/// assert_eq!(resi_date.value.as_ref().unwrap(), "from 1900 to 1905");
 /// ```
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
