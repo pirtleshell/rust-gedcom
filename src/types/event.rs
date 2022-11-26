@@ -36,6 +36,7 @@ impl ToString for EventType {
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct Event {
     pub event: EventType,
+    pub value: Option<String>,
     pub date: Option<Date>,
     pub place: Option<String>,
     pub note: Option<Note>,
@@ -48,6 +49,7 @@ impl Event {
     pub fn new(tokenizer: &mut Tokenizer, level: u8, tag: &str) -> Event {
         let mut event = Event {
             event: Self::from_tag(tag),
+            value: None,
             date: None,
             place: None,
             note: None,
@@ -127,6 +129,14 @@ impl Parser for Event {
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         tokenizer.next_token();
 
+        // handle value on event line
+        let mut value = String::new();
+
+        if let Token::LineValue(val) = &tokenizer.current_token {
+            value.push_str(&val);
+            tokenizer.next_token();
+        }
+
         loop {
             if let Token::Level(cur_level) = tokenizer.current_token {
                 if cur_level <= level {
@@ -149,6 +159,10 @@ impl Parser for Event {
                 Token::Level(_) => tokenizer.next_token(),
                 _ => panic!("Unhandled Event Token: {:?}", tokenizer.current_token),
             }
+        }
+
+        if &value != "" {
+            self.value = Some(value);
         }
     }
 }
