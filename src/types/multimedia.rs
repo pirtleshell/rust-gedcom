@@ -1,5 +1,5 @@
 use crate::{
-    parser::Parser,
+    Parser,
     tokenizer::{Token, Tokenizer},
     types::{Note, SourceCitation, Xref},
 };
@@ -9,7 +9,7 @@ use super::ChangeDate;
 #[derive(Debug)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 
-/// The multimedia record refers to 1 or more external digital files, and may provide some
+/// MultimediaRecord refers to 1 or more external digital files, and may provide some
 /// additional information about the files and the media they encode.
 ///
 /// The file reference can occur more than once to group multiple files together. Grouped files
@@ -22,7 +22,7 @@ use super::ChangeDate;
 ///
 /// # Example
 /// ```
-/// use gedcom::GedcomRecord;
+/// use gedcom::GedcomDocument;
 /// let sample = "\
 ///     0 HEAD\n\
 ///     1 GEDC\n\
@@ -30,73 +30,24 @@ use super::ChangeDate;
 ///     2 FORM LINEAGE-LINKED\n\
 ///     0 @MEDIA1@ OBJE\n\
 ///     1 FILE /home/user/media/file_name.bmp\n\
-///     2 FORM bmp\n\
-///     3 TYPE photo
-///     2 TITL A Bitmap\n\
-///     1 REFN 000\n\
-///     2 TYPE User Reference Type\n\
+///     1 TITL A Title\n\
 ///     1 RIN Automated Id\n\
-///     1 NOTE A note\n\
-///     2 CONT Note continued here. The word TE\n\
-///     2 CONC ST should not be broken!\n\
-///     1 SOUR @SOUR1@\n\
-///     2 PAGE 42
-///     2 _CUSTOM Custom data\n\
-///     1 CHAN 
-///     2 DATE 1 APR 1998
-///     3 TIME 12:34:56.789
-///     2 NOTE A note
-///     3 CONT Note continued here. The word TE
-///     3 CONC ST should not be broken!
 ///     0 TRLR";
 ///
-/// let mut parser = GedcomRecord::new(sample.chars());
-/// let data = parser.parse_record();
+/// let mut doc = GedcomDocument::new(sample.chars());
+/// let data = doc.parse_document();
+///
 /// assert_eq!(data.multimedia.len(), 1);
-///
 /// let obje = &data.multimedia[0];
-/// assert_eq!(obje.xref.as_ref().unwrap(), "@MEDIA1@");
 ///
-/// let file = obje.file.as_ref().unwrap();
-/// assert_eq!(
-///     file.value.as_ref().unwrap(),
-///     "/home/user/media/file_name.bmp"
-/// );
+/// let xref = obje.xref.as_ref().unwrap();
+/// assert_eq!(xref, "@MEDIA1@");
 ///
-/// assert_eq!(file.title.as_ref().unwrap(), "A Bitmap");
+/// let titl = obje.title.as_ref().unwrap();
+/// assert_eq!(titl, "A Title");
 ///
-/// let form = file.form.as_ref().unwrap();
-/// assert_eq!(form.value.as_ref().unwrap(), "bmp");
-/// assert_eq!(form.source_media_type.as_ref().unwrap(), "photo");
-///
-/// let user_ref = obje.user_reference_number.as_ref().unwrap();
-/// assert_eq!(user_ref.value.as_ref().unwrap(), "000");
-/// assert_eq!(
-///     user_ref.user_reference_type.as_ref().unwrap(),
-///     "User Reference Type"
-/// );
-///
-/// assert_eq!(obje.automated_record_id.as_ref().unwrap(), "Automated Id");
-///
-/// let note = obje.note_structure.as_ref().unwrap();
-/// assert_eq!(
-///     note.value.as_ref().unwrap(),
-///     "A note\nNote continued here. The word TEST should not be broken!"
-/// );
-///
-/// let sour = obje.source_citation.as_ref().unwrap();
-/// assert_eq!(sour.xref, "@SOUR1@");
-/// assert_eq!(sour.page.as_ref().unwrap(), "42");
-/// assert_eq!(sour.custom_data.len(), 1);
-/// assert_eq!(sour.custom_data[0].value, "Custom data");
-///
-/// let chan = obje.change_date.as_ref().unwrap();
-/// let date = chan.date.as_ref().unwrap();
-/// assert_eq!(date.value.as_ref().unwrap(), "1 APR 1998");
-/// assert_eq!(date.time.as_ref().unwrap(), "12:34:56.789");
-///
-/// let chan_note = chan.note.as_ref().unwrap();
-/// assert_eq!(chan_note.value.as_ref().unwrap(), "A note\nNote continued here. The word TEST should not be broken!");
+/// let rin = obje.automated_record_id.as_ref().unwrap();
+/// assert_eq!(rin, "Automated Id");
 /// ```
 pub struct MultimediaRecord {
     /// Optional reference to link to this submitter
@@ -172,7 +123,7 @@ impl Parser for MultimediaRecord {
 ///
 /// # Example
 /// ```
-/// use gedcom::GedcomRecord;
+/// use gedcom::GedcomDocument;
 /// let sample = "\
 ///     0 HEAD\n\
 ///     1 CHAR UTF-8\n\
@@ -189,8 +140,8 @@ impl Parser for MultimediaRecord {
 ///     1 TITL In Prague\n\
 ///     0 TRLR";
 ///
-/// let mut record = GedcomRecord::new(sample.chars());
-/// let data = record.parse_record();
+/// let mut record = GedcomDocument::new(sample.chars());
+/// let data = record.parse_document();
 /// assert_eq!(data.multimedia.len(), 1);
 ///
 /// let obje = &data.multimedia[0];
@@ -257,34 +208,30 @@ impl Parser for MultimediaLink {
     }
 }
 
-/// A complete local or remote file reference to the auxiliary data to be linked to the GEDCOM
-/// context. Remote reference would include a network address where the multimedia data may
-/// be obtained.
+/// MultimediaFileRefn is a complete local or remote file reference to the auxiliary data to be
+/// linked to the GEDCOM context. Remote reference would include a network address where the
+/// multimedia data may be obtained.
+///
 /// # Example
-/// ```
-/// use gedcom::GedcomRecord;
+///
+/// ```rust
+/// use gedcom::GedcomDocument;
 /// let sample = "\
 ///     0 HEAD\n\
 ///     1 GEDC\n\
 ///     2 VERS 5.5\n\
-///     2 FORM LINEAGE-LINKED\n\
 ///     0 @MEDIA1@ OBJE\n\
 ///     1 FILE /home/user/media/file_name.bmp\n\
 ///     2 FORM bmp\n\
 ///     3 TYPE photo
 ///     2 TITL A Bitmap\n\
-///     1 REFN 000\n\
-///     2 TYPE User Reference Type\n\
 ///     0 TRLR";
 ///
-/// let mut parser = GedcomRecord::new(sample.chars());
-/// let data = parser.parse_record();
+/// let mut doc = GedcomDocument::new(sample.chars());
+/// let data = doc.parse_document();
 /// assert_eq!(data.multimedia.len(), 1);
 ///
-/// let obje = &data.multimedia[0];
-/// assert_eq!(obje.xref.as_ref().unwrap(), "@MEDIA1@");
-///
-/// let file = obje.file.as_ref().unwrap();
+/// let file = data.multimedia[0].file.as_ref().unwrap();
 /// assert_eq!(
 ///     file.value.as_ref().unwrap(),
 ///     "/home/user/media/file_name.bmp"
@@ -295,13 +242,6 @@ impl Parser for MultimediaLink {
 /// let form = file.form.as_ref().unwrap();
 /// assert_eq!(form.value.as_ref().unwrap(), "bmp");
 /// assert_eq!(form.source_media_type.as_ref().unwrap(), "photo");
-///
-/// let user_ref = obje.user_reference_number.as_ref().unwrap();
-/// assert_eq!(user_ref.value.as_ref().unwrap(), "000");
-/// assert_eq!(
-///     user_ref.user_reference_type.as_ref().unwrap(),
-///     "User Reference Type"
-/// );
 /// ```
 #[derive(Debug, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
@@ -349,15 +289,41 @@ impl Parser for MultimediaFileRefn {
     }
 }
 
-#[derive(Debug, Default)]
-#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 
-/// Indicates the format of the multimedia data associated with the specific GEDCOM context. This
-/// allows processors to determine whether they can process the data object. Any linked files should
-/// contain the data required, in the indicated format, to process the file data.
+/// MultimediaFormat indicates the format of the multimedia data associated with the specific
+/// GEDCOM context. This allows processors to determine whether they can process the data object.
+/// Any linked files should contain the data required, in the indicated format, to process the file
+/// data.
 ///
 /// NOTE: The 5.5 spec lists the following seven formats [ bmp | gif | jpg | ole | pcx | tif | wav ].
 /// However, we're leaving this open for emerging formats, Option<String>.
+///
+/// # Example
+///
+/// ```rust
+/// use gedcom::GedcomDocument;
+/// let sample = "\
+///     0 HEAD\n\
+///     1 GEDC\n\
+///     2 VERS 5.5\n\
+///     0 @MEDIA1@ OBJE\n\
+///     1 FILE /home/user/media/file_name.bmp\n\
+///     2 FORM bmp\n\
+///     3 TYPE photo
+///     0 TRLR";
+///
+/// let mut doc = GedcomDocument::new(sample.chars());
+/// let data = doc.parse_document();
+/// assert_eq!(data.multimedia.len(), 1);
+///
+/// let file = data.multimedia[0].file.as_ref().unwrap();
+///
+/// let form = file.form.as_ref().unwrap();
+/// assert_eq!(form.value.as_ref().unwrap(), "bmp");
+/// assert_eq!(form.source_media_type.as_ref().unwrap(), "photo");
+/// ```
+#[derive(Debug, Default)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct MultimediaFormat {
     pub value: Option<String>,
     pub source_media_type: Option<String>,
@@ -399,9 +365,36 @@ impl Parser for MultimediaFormat {
 #[derive(Debug, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 
-/// A user-defined number or text that the submitter uses to identify this record. For instance, it
-/// may be a record number within the submitter's automated or manual system, or it may be a page
-/// and position number on a pedigree chart.
+/// UserReferenceNumber is a user-defined number or text that the submitter uses to identify this
+/// record. For instance, it may be a record number within the submitter's automated or manual
+/// system, or it may be a page and position number on a pedigree chart.
+///
+/// # Example
+///
+/// ```rust
+/// use gedcom::GedcomDocument;
+/// let sample = "\
+///     0 HEAD\n\
+///     1 GEDC\n\
+///     2 VERS 5.5\n\
+///     2 FORM LINEAGE-LINKED\n\
+///     0 @MEDIA1@ OBJE\n\
+///     1 FILE /home/user/media/file_name.bmp\n\
+///     1 REFN 000\n\
+///     2 TYPE User Reference Type\n\
+///     0 TRLR";
+///
+/// let mut doc = GedcomDocument::new(sample.chars());
+/// let data = doc.parse_document();
+/// assert_eq!(data.multimedia.len(), 1);
+///
+/// let user_ref = data.multimedia[0].user_reference_number.as_ref().unwrap();
+/// assert_eq!(user_ref.value.as_ref().unwrap(), "000");
+/// assert_eq!(
+///     user_ref.user_reference_type.as_ref().unwrap(),
+///     "User Reference Type"
+/// );
+/// ```
 pub struct UserReferenceNumber {
     /// line value
     pub value: Option<String>,

@@ -11,7 +11,7 @@ pub mod util {
 #[cfg(test)]
 mod tests {
     use super::util::read_relative;
-    use gedcom::GedcomRecord;
+    use gedcom::GedcomDocument;
     use gedcom::types::event::HasEvents;
 
     #[test]
@@ -20,8 +20,8 @@ mod tests {
         // let simple_ged: String = read_relative("./tests/fixtures/allged.ged");
         assert!(simple_ged.len() > 0);
 
-        let mut parser = GedcomRecord::new(simple_ged.chars());
-        let data = parser.parse_record();
+        let mut doc = GedcomDocument::new(simple_ged.chars());
+        let data = doc.parse_document();
         assert_eq!(data.individuals.len(), 3);
         assert_eq!(data.families.len(), 1);
         assert_eq!(data.submitters.len(), 1);
@@ -72,8 +72,8 @@ mod tests {
         let simple_ged: String = read_relative("./tests/fixtures/washington.ged");
         assert!(simple_ged.len() > 0);
 
-        let mut parser = GedcomRecord::new(simple_ged.chars());
-        let data = parser.parse_record();
+        let mut doc = GedcomDocument::new(simple_ged.chars());
+        let data = doc.parse_document();
         assert_eq!(data.individuals.len(), 538);
         assert_eq!(data.families.len(), 278);
         // assert_eq!(data.submitters.len(), 0);

@@ -1,5 +1,5 @@
 use crate::{
-    parser::Parser,
+    Parser,
     tokenizer::{Token, Tokenizer},
     types::Address,
 };

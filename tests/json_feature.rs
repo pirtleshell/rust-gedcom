@@ -2,7 +2,7 @@
 #[cfg(feature = "json")]
 mod json_feature_tests {
     use super::lib::util::read_relative;
-    use gedcom::{parse, types::Name};
+    use gedcom::{parse_ged, types::Name};
     use serde_json;
     use serde_test::{assert_tokens, Token};
 

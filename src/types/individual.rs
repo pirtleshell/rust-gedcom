@@ -1,13 +1,11 @@
 use crate::{
-    parser::Parser,
+    Parser,
     tokenizer::{Token, Tokenizer},
-    types::{event::HasEvents, Event, MultimediaRecord, Note, SourceCitation, UserDefinedData},
+    types::{event::HasEvents, Event, MultimediaRecord, Note, SourceCitation, UserDefinedData, Xref},
 };
 
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
-
-type Xref = String;
 
 /// A Person within the family tree
 #[derive(Debug)]
@@ -140,6 +138,15 @@ impl Gender {
         let mut gender = Gender::Unknown;
         gender.parse(tokenizer, level);
         gender
+    }
+
+    pub fn get_gender(&self) -> &str {
+      match &self {
+        Gender::Male => "M",
+        Gender::Female => "F",
+        Gender::Nonbinary => "N",
+        Gender::Unknown => "U",
+      }
     }
 }
 

@@ -2,7 +2,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    parser::Parser,
+    Parser,
     tokenizer::{Token, Tokenizer},
 };
 

@@ -1,12 +1,12 @@
 use crate::{
-    parser::Parser,
+    Parser,
     tokenizer::{Token, Tokenizer},
+    types::Note,
 };
 
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
 
-use super::Note;
 
 /// TODO Date should encompasses a number of date formats, e.g. approximated, period, phrase and range.
 #[derive(Clone, Debug, Default)]
@@ -65,6 +65,39 @@ impl Parser for Date {
 /// ChangeDate is intended to only record the last change to a record. Some systems may want to
 /// manage the change process with more detail, but it is sufficient for GEDCOM purposes to
 /// indicate the last time that a record was modified.
+///
+/// # Example
+/// ```
+/// use gedcom::GedcomDocument;
+/// let sample = "\
+///     0 HEAD\n\
+///     1 GEDC\n\
+///     2 VERS 5.5\n\
+///     2 FORM LINEAGE-LINKED\n\
+///     0 @MEDIA1@ OBJE\n\
+///     1 FILE /home/user/media/file_name.bmp\n\
+///     1 CHAN 
+///     2 DATE 1 APR 1998
+///     3 TIME 12:34:56.789
+///     2 NOTE A note
+///     3 CONT Note continued here. The word TE
+///     3 CONC ST should not be broken!
+///     0 TRLR";
+///
+/// let mut doc = GedcomDocument::new(sample.chars());
+/// let data = doc.parse_document();
+/// assert_eq!(data.multimedia.len(), 1);
+///
+/// let obje = &data.multimedia[0];
+///
+/// let chan = obje.change_date.as_ref().unwrap();
+/// let date = chan.date.as_ref().unwrap();
+/// assert_eq!(date.value.as_ref().unwrap(), "1 APR 1998");
+/// assert_eq!(date.time.as_ref().unwrap(), "12:34:56.789");
+///
+/// let chan_note = chan.note.as_ref().unwrap();
+/// assert_eq!(chan_note.value.as_ref().unwrap(), "A note\nNote continued here. The word TEST should not be broken!");
+/// ```
 #[derive(Debug, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct ChangeDate {

@@ -1,17 +1,15 @@
 use crate::{
-    parser::Parser,
+    Parser,
     tokenizer::{Token, Tokenizer},
-    types::{Date, Event, Note, RepoCitation, UserDefinedData},
+    types::{Date, Event, Note, RepoCitation, UserDefinedData, Xref},
 };
 
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
 
-use super::Xref;
-
+/// Source for genealogy facts
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-/// Source for genealogy facts
 pub struct Source {
     pub xref: Option<String>,
     pub data: SourceData,
@@ -95,7 +93,7 @@ impl SourceData {
 /// # Example
 ///
 /// ```
-/// use gedcom::GedcomRecord;
+/// use gedcom::GedcomDocument;
 /// let sample = "\
 ///     0 HEAD\n\
 ///     1 GEDC\n\
@@ -106,8 +104,8 @@ impl SourceData {
 ///     2 PAGE 42\n\
 ///     0 TRLR";
 ///
-/// let mut ged = GedcomRecord::new(sample.chars());
-/// let data = ged.parse_record();
+/// let mut ged = GedcomDocument::new(sample.chars());
+/// let data = ged.parse_document();
 ///
 /// assert_eq!(data.individuals[0].source[0].xref, "@SOURCE1@");
 /// assert_eq!(data.individuals[0].source[0].page.as_ref().unwrap(), "42");
@@ -188,7 +186,7 @@ impl Parser for SourceCitation {
 /// # Example
 ///
 /// ```
-/// use gedcom::GedcomRecord;
+/// use gedcom::GedcomDocument;
 /// let sample = "\
 ///     0 HEAD\n\
 ///     1 GEDC\n\
@@ -201,8 +199,8 @@ impl Parser for SourceCitation {
 ///     3 DATE BEF 1 JAN 1900\n\
 ///     0 TRLR";
 ///
-/// let mut ged = GedcomRecord::new(sample.chars());
-/// let data = ged.parse_record();
+/// let mut ged = GedcomDocument::new(sample.chars());
+/// let data = ged.parse_document();
 /// let citation_data = data.individuals[0].source[0].data.as_ref().unwrap();
 ///
 /// assert_eq!(
@@ -270,7 +268,7 @@ impl Parser for SourceCitationData {
 /// # Example
 ///
 /// ```
-/// use gedcom::GedcomRecord;
+/// use gedcom::GedcomDocument;
 /// let sample = "\
 ///     0 HEAD\n\
 ///     1 GEDC\n\
@@ -286,8 +284,8 @@ impl Parser for SourceCitationData {
 ///     4 CONC ST should not be broken!\n\
 ///     0 TRLR";
 ///
-/// let mut ged = GedcomRecord::new(sample.chars());
-/// let data = ged.parse_record();
+/// let mut ged = GedcomDocument::new(sample.chars());
+/// let data = ged.parse_document();
 /// let citation_data = data.individuals[0].source[0].data.as_ref().unwrap();
 ///
 /// assert_eq!(
@@ -363,7 +361,7 @@ impl Parser for TextFromSource {
 /// # Example
 ///
 /// ```
-/// use gedcom::GedcomRecord;
+/// use gedcom::GedcomDocument;
 /// let sample = "\
 ///     0 HEAD\n\
 ///     1 GEDC\n\
@@ -375,8 +373,8 @@ impl Parser for TextFromSource {
 ///     2 QUAY 1
 ///     0 TRLR";
 ///
-/// let mut ged = GedcomRecord::new(sample.chars());
-/// let data = ged.parse_record();
+/// let mut ged = GedcomDocument::new(sample.chars());
+/// let data = ged.parse_document();
 /// let quay = data.individuals[0].source[0].certainty_assessment.as_ref().unwrap();
 ///
 /// assert_eq!(

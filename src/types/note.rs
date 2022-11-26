@@ -1,5 +1,5 @@
 use crate::{
-    parser::Parser,
+    Parser,
     tokenizer::{Token, Tokenizer},
     types::{Source, Translation},
 };
@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// # Example
 /// ```
-/// use gedcom::GedcomRecord;
+/// use gedcom::GedcomDocument;
 /// let sample = "\
 ///     0 HEAD\n\
 ///     1 GEDC\n\
@@ -42,8 +42,8 @@ use serde::{Deserialize, Serialize};
 ///     2 CONC ST should not be broken!\n\
 ///     0 TRLR";
 
-/// let mut parser = GedcomRecord::new(sample.chars());
-/// let data = parser.parse_record();
+/// let mut doc = GedcomDocument::new(sample.chars());
+/// let data = doc.parse_document();
 
 /// let note = data.header.unwrap().note.unwrap();
 /// assert_eq!(note.value.unwrap().chars().count(), 1440);

@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 use crate::{
-    parser::Parser,
+    Parser,
     tokenizer::{Token, Tokenizer},
 };
 

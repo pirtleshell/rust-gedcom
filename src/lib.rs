@@ -2,11 +2,11 @@
 
 ```rust
 // the parser takes the gedcom file contents as a chars iterator
-use gedcom::GedcomRecord;
+use gedcom::GedcomDocument;
 let gedcom_source = std::fs::read_to_string("./tests/fixtures/sample.ged").unwrap();
 
-let mut record = GedcomRecord::new(gedcom_source.chars());
-let gedcom_data = record.parse_record();
+let mut doc = GedcomDocument::new(gedcom_source.chars());
+let gedcom_data = doc.parse_document();
 
 // output some stats on the gedcom contents
 gedcom_data.stats();
@@ -17,6 +17,11 @@ This crate contains an optional `"json"` feature that implements serialization &
 
 #![deny(clippy::pedantic)]
 #![warn(missing_docs)]
+
+use std::str::Chars;
+
+#[cfg(feature = "json")]
+use serde::{Deserialize, Serialize};
 
 #[macro_use]
 mod util;
@@ -29,37 +34,96 @@ use types::{
     UserDefinedData, Family, Header, Individual, MultimediaRecord, Repository, Source, Submitter,
 };
 
-mod parser;
-pub use parser::Parser;
 
-use std::str::Chars;
-
-/// The Gedcom parser that converts the token list into a data structure
-pub struct GedcomRecord<'a> {
+/// The GedcomDocument can convert the token list into a data structure. The order of the Dataset
+/// should be as follows: the HEAD must come first and TRLR must be last, with any RECORDs in
+/// between.
+///
+/// # A Minimal Example
+///
+/// ```rust
+/// use gedcom::GedcomDocument;
+/// let sample = "\
+///    0 HEAD
+///    1 GEDC
+///    2 VERS 5.5
+///    0 TRLR";
+///
+/// let mut doc = GedcomDocument::new(sample.chars());
+/// let data = doc.parse_document();
+///
+/// let head = data.header.unwrap();
+/// let gedc = head.gedcom.unwrap();
+/// assert_eq!(gedc.version.unwrap(), "5.5");
+/// ```
+pub struct GedcomDocument<'a> {
     tokenizer: Tokenizer<'a>,
 }
 
-impl<'a> GedcomRecord<'a> {
+impl<'a> GedcomDocument<'a> {
     /// Creates a parser state machine for parsing a gedcom file as a chars iterator
     #[must_use]
-    pub fn new(chars: Chars<'a>) -> GedcomRecord {
+    pub fn new(chars: Chars<'a>) -> GedcomDocument {
         let mut tokenizer = Tokenizer::new(chars);
         tokenizer.next_token();
-        GedcomRecord { tokenizer }
+        GedcomDocument { tokenizer }
     }
 
     /// Does the actual parsing of the record.
-    pub fn parse_record(&mut self) -> GedcomData {
+    pub fn parse_document(&mut self) -> GedcomData {
         GedcomData::new(&mut self.tokenizer, 0)
     }
 }
 
-#[cfg(feature = "json")]
-use serde::{Deserialize, Serialize};
+/// The Parser trait converts a subset of a token list into a type's data structure.
+pub trait Parser {
+    /// parse does the actual parsing of a subset of a token list
+    fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8);
+}
 
+/// GedcomData is the data structure representing all the data within a gedcom file
+///
+/// # Example
+///
+/// ```rust
+/// use gedcom::GedcomDocument;
+/// let sample = "\
+///     0 HEAD
+///     1 GEDC
+///     2 VERS 5.5
+///     0 @SUBMITTER@ SUBM
+///     0 @PERSON1@ INDI
+///     0 @FAMILY1@ FAM
+///     0 @R1@ REPO
+///     0 @SOURCE1@ SOUR
+///     0 @MEDIA1@ OBJE\n\
+///     0 _MYOWNTAG This is a non-standard tag. Not recommended but allowed
+///     0 TRLR";
+///
+/// let mut doc = GedcomDocument::new(sample.chars());
+/// let data = doc.parse_document();
+///
+/// assert_eq!(data.submitters.len(), 1);
+/// assert_eq!(data.submitters[0].xref.as_ref().unwrap(), "@SUBMITTER@");
+///
+/// assert_eq!(data.individuals.len(), 1);
+/// assert_eq!(data.individuals[0].xref.as_ref().unwrap(), "@PERSON1@");
+///
+/// assert_eq!(data.families.len(), 1);
+/// assert_eq!(data.families[0].xref.as_ref().unwrap(), "@FAMILY1@");
+///
+/// assert_eq!(data.repositories.len(), 1);
+/// assert_eq!(data.repositories[0].xref.as_ref().unwrap(), "@R1@");
+///
+/// assert_eq!(data.sources.len(), 1);
+/// assert_eq!(data.sources[0].xref.as_ref().unwrap(), "@SOURCE1@");
+///
+/// assert_eq!(data.custom_data.len(), 1);
+/// assert_eq!(data.custom_data[0].tag, "_MYOWNTAG");
+/// assert_eq!(data.custom_data[0].value, "This is a non-standard tag. Not recommended but allowed");
+/// ```
 #[derive(Debug, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-/// The data structure representing all the data within a gedcom file
 pub struct GedcomData {
     /// Header containing file metadata
     pub header: Option<Header>,
@@ -146,7 +210,6 @@ impl Parser for GedcomData {
     /// Does the actual parsing of the record.
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         loop {
-            // TODO is this necessary?
             let current_level = match tokenizer.current_token {
                 Token::Level(n) => n,
                 _ => panic!(
@@ -203,7 +266,7 @@ impl Parser for GedcomData {
 
 #[must_use]
 /// Helper function for converting GEDCOM file content stream to parsed data.
-pub fn parse(content: std::str::Chars) -> GedcomData {
-    let mut p = GedcomRecord::new(content);
-    p.parse_record()
+pub fn parse_ged(content: std::str::Chars) -> GedcomData {
+    let mut p = GedcomDocument::new(content);
+    p.parse_document()
 }

@@ -1,5 +1,5 @@
 use crate::{
-    parser::Parser,
+    Parser,
     tokenizer::{Token, Tokenizer},
     types::{event::HasEvents, Event, Note},
 };
@@ -102,7 +102,7 @@ impl HasEvents for Family {
 /// # Example
 ///
 /// ```
-/// use gedcom::GedcomRecord;
+/// use gedcom::GedcomDocument;
 /// let sample = "\
 ///     0 HEAD\n\
 ///     1 GEDC\n\
@@ -116,8 +116,8 @@ impl HasEvents for Family {
 ///     2 FAMC @PARENTS@
 ///     0 TRLR";
 ///
-/// let mut ged = GedcomRecord::new(sample.chars());
-/// let data = ged.parse_record();
+/// let mut ged = GedcomDocument::new(sample.chars());
+/// let data = ged.parse_document();
 ///
 /// assert_eq!(data.individuals[0].events[0].child_to_family_link.as_ref().unwrap().xref.as_ref().unwrap(), "@PARENTS@");
 ///
