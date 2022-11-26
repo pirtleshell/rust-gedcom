@@ -15,7 +15,7 @@ GEDCOM is a file format for sharing genealogical information like family trees.
 
 `rust-gedcom` hopes to be ~~fully~~ mostly compliant with the [Gedcom 5.5.1 specification](https://edge.fscdn.org/assets/img/documents/ged551-5bac5e57fe88dd37df0e153d9c515335.pdf).
 
-Later specifications, such as [5.5.2](https://jfcardinal.github.io/GEDCOM-5.5.2/gedcom-5.5.2.html) and [7.0.11](https://gedcom.io/specifications/FamilySearchGEDCOMv7.html#purpose-and-content-of-the-familysearch-gedcom-specification) are useful in assessing which tags are worth supporting or not.
+Later specifications, such as [5.5.2](https://jfcardinal.github.io/GEDCOM-5.5.2/gedcom-5.5.2.html) and [7.0.11](https://gedcom.io/specifications/FamilySearchGEDCOMv7.html#purpose-and-content-of-the-familysearch-gedcom-specification), are useful in assessing which tags are worth supporting or not.
 
 ## Usage
 

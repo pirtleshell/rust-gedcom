@@ -1,8 +1,9 @@
 use crate::{
-    Parser,
     tokenizer::{Token, Tokenizer},
-    types::{ChildToFamilyLink, Note, SourceCitation},
+    types::{ChildToFamilyLink, Date, Note, SourceCitation},
+    Parser,
 };
+
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
 use std::{fmt, string::ToString};
@@ -35,7 +36,7 @@ impl ToString for EventType {
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct Event {
     pub event: EventType,
-    pub date: Option<String>,
+    pub date: Option<Date>,
     pub place: Option<String>,
     pub note: Option<Note>,
     pub child_to_family_link: Option<ChildToFamilyLink>,
@@ -102,8 +103,8 @@ impl std::fmt::Debug for Event {
 pub trait HasEvents {
     fn add_event(&mut self, event: Event) -> ();
     fn events(&self) -> Vec<Event>;
-    fn dates(&self) -> Vec<String> {
-        let mut dates: Vec<String> = Vec::new();
+    fn dates(&self) -> Vec<Date> {
+        let mut dates: Vec<Date> = Vec::new();
         for event in self.events() {
             if let Some(d) = &event.date {
                 dates.push(d.clone());
@@ -135,13 +136,13 @@ impl Parser for Event {
 
             match &tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
-                    "DATE" => self.date = Some(tokenizer.take_line_value()),
+                    "DATE" => self.date = Some(Date::new(tokenizer, level + 1)),
                     "PLAC" => self.place = Some(tokenizer.take_line_value()),
                     "SOUR" => self.add_citation(SourceCitation::new(tokenizer, level + 1)),
                     "FAMC" => {
                         self.child_to_family_link =
                             Some(ChildToFamilyLink::new(tokenizer, level + 1))
-                    },
+                    }
                     "NOTE" => self.note = Some(Note::new(tokenizer, level + 1)),
                     _ => panic!("{} Unhandled Event Tag: {}", tokenizer.debug(), tag),
                 },

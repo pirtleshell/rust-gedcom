@@ -8,7 +8,36 @@ use crate::{
 use serde::{Deserialize, Serialize};
 
 
-/// TODO Date should encompasses a number of date formats, e.g. approximated, period, phrase and range.
+/// Date encompasses a number of date formats, e.g. approximated, period, phrase and range.
+///
+/// # Example
+///
+/// ```rust
+/// use gedcom::GedcomDocument;
+/// let sample = "\
+///     0 HEAD\n\
+///     1 GEDC\n\
+///     2 VERS 5.5\n\
+///     1 DATE 2 Oct 2019
+///     2 TIME 0:00:00
+///     0 @I1@ INDI
+///     1 NAME Ancestor
+///     1 BIRT
+///     2 DATE BEF 1828
+///     1 RESI
+///     2 PLAC 100 Broadway, New York, NY 10005
+///     2 DATE from 1900 to 1905
+///     0 TRLR";
+///
+/// let mut doc = GedcomDocument::new(sample.chars());
+/// let data = doc.parse_document();
+///
+/// let head_date = data.header.unwrap().date.unwrap();
+/// assert_eq!(head_date.value.unwrap(), "2 Oct 2019");
+///
+/// let resi_date = data.individuals[0].events[0].date.as_ref().unwrap();
+/// assert_eq!(resi_date.value.as_ref().unwrap(), "BEF 1828");
+/// ```
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct Date {

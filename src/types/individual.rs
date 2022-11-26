@@ -16,10 +16,10 @@ pub struct Individual {
     pub sex: Gender,
     pub families: Vec<FamilyLink>,
     pub custom_data: Vec<UserDefinedData>,
-    pub last_updated: Option<String>,
     pub source: Vec<SourceCitation>,
     pub multimedia: Vec<MultimediaRecord>,
     pub events: Vec<Event>,
+    pub last_updated: Option<String>,
 }
 
 impl Individual {

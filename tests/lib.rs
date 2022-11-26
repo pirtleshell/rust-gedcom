@@ -64,7 +64,7 @@ mod tests {
         let events = data.families[0].events();
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].event.to_string(), "Marriage");
-        assert_eq!(events[0].date.as_ref().unwrap(), "1 APR 1950");
+        assert_eq!(events[0].date.as_ref().unwrap().value.as_ref().unwrap(), "1 APR 1950");
     }
 
     #[test]
@@ -104,6 +104,6 @@ mod tests {
         let events = data.families[0].events();
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].event.to_string(), "Marriage");
-        assert_eq!(events[0].date.as_ref().unwrap(), "6 MAR 1730");
+        assert_eq!(events[0].date.as_ref().unwrap().value.as_ref().unwrap(), "6 MAR 1730");
     }
 }
