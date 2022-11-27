@@ -1,7 +1,9 @@
 use crate::{
-    Parser,
     tokenizer::{Token, Tokenizer},
-    types::{event::HasEvents, Event, MultimediaRecord, Note, SourceCitation, UserDefinedData, Xref},
+    types::{
+        event::HasEvents, Event, MultimediaRecord, Note, SourceCitation, UserDefinedData, Xref,
+    },
+    Parser,
 };
 
 #[cfg(feature = "json")]
@@ -13,7 +15,7 @@ use serde::{Deserialize, Serialize};
 pub struct Individual {
     pub xref: Option<Xref>,
     pub name: Option<Name>,
-    pub sex: Gender,
+    pub sex: Option<Gender>,
     pub families: Vec<FamilyLink>,
     pub custom_data: Vec<UserDefinedData>,
     pub source: Vec<SourceCitation>,
@@ -28,7 +30,7 @@ impl Individual {
         let mut indi = Individual {
             xref,
             name: None,
-            sex: Gender::Unknown,
+            sex: None,
             events: Vec::new(),
             families: Vec::new(),
             custom_data: Vec::new(),
@@ -85,7 +87,7 @@ impl Parser for Individual {
             match &tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
                     "NAME" => self.name = Some(Name::new(tokenizer, level + 1)),
-                    "SEX" => self.sex = Gender::new(tokenizer, level + 1),
+                    "SEX" => self.sex = Some(Gender::new(tokenizer, level + 1)),
                     "ADOP" | "BIRT" | "BAPM" | "BARM" | "BASM" | "BLES" | "BURI" | "CENS"
                     | "CHR" | "CHRA" | "CONF" | "CREM" | "DEAT" | "EMIG" | "FCOM" | "GRAD"
                     | "IMMI" | "NATU" | "ORDN" | "RETI" | "RESI" | "PROB" | "WILL" | "EVEN"
@@ -123,42 +125,106 @@ impl Parser for Individual {
     }
 }
 
-/// Gender of an `Individual`
+/// GenderType is a set of enumerated values that indicate the sex of an individual at birth. See
+/// 5.5 specification, p. 61; https://gedcom.io/specifications/FamilySearchGEDCOMv7.html#SEX
 #[derive(Debug)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-pub enum Gender {
+pub enum GenderType {
+    /// Tag 'X'
     Male,
+    /// TAG 'M'
     Female,
+    /// Tag 'X'; "Does not fit the typical definition of only Male or only Female"
     Nonbinary,
+    /// Tag 'U'; "Cannot be determined from available sources"
     Unknown,
+}
+
+impl GenderType {
+    pub fn get_str(&self) -> &str {
+        match self {
+            GenderType::Male => "M",
+            GenderType::Female => "F",
+            GenderType::Nonbinary => "X",
+            GenderType::Unknown => "U",
+        }
+    }
+}
+
+/// Gender (tag: SEX); This can describe an individual’s reproductive or sexual anatomy at birth.
+/// Related concepts of gender identity or sexual preference are not currently given their own tag.
+/// Cultural or personal gender preference may be indicated using the FACT tag. See
+/// https://gedcom.io/specifications/FamilySearchGEDCOMv7.html#SEX
+///
+/// # Example
+///
+/// ```rust
+/// use gedcom::GedcomDocument;
+/// let sample = "\
+///     0 HEAD\n\
+///     1 GEDC\n\
+///     2 VERS 5.5\n\
+///     0 @PERSON1@ INDI\n\
+///     1 SEX M
+///     2 FACT A fact about an individual's gen
+///     3 CONC der
+///     2 SOUR @CITATION1@
+///     3 PAGE Page
+///     4 CONC : 132
+///     3 _MYOWNTAG This is a non-standard tag. Not recommended but allowed
+///     0 TRLR";
+///
+/// let mut doc = GedcomDocument::new(sample.chars());
+/// let data = doc.parse_document();
+///
+/// let sex = data.individuals[0].sex.as_ref().unwrap();
+/// assert_eq!(sex.value.get_str(), "M");
+/// assert_eq!(sex.fact.as_ref().unwrap(), "A fact about an individual's gender");
+/// assert_eq!(sex.sources[0].xref, "@CITATION1@");
+/// assert_eq!(sex.sources[0].page.as_ref().unwrap(), "Page: 132");
+/// assert_eq!(sex.sources[0].custom_data[0].tag, "_MYOWNTAG");
+/// assert_eq!(sex.sources[0].custom_data[0].value, "This is a non-standard tag. Not recommended but allowed");
+/// ```
+#[derive(Debug)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+pub struct Gender {
+    pub value: GenderType,
+    pub fact: Option<String>,
+    pub sources: Vec<SourceCitation>,
+    pub custom_data: Vec<UserDefinedData>,
 }
 
 impl Gender {
     pub fn new(tokenizer: &mut Tokenizer, level: u8) -> Gender {
-        let mut gender = Gender::Unknown;
-        gender.parse(tokenizer, level);
-        gender
+        let mut sex = Gender {
+            value: GenderType::Unknown,
+            fact: None,
+            sources: Vec::new(),
+            custom_data: Vec::new(),
+        };
+        sex.parse(tokenizer, level);
+        sex
     }
 
-    pub fn get_gender(&self) -> &str {
-      match &self {
-        Gender::Male => "M",
-        Gender::Female => "F",
-        Gender::Nonbinary => "N",
-        Gender::Unknown => "U",
-      }
+    pub fn add_source_citation(&mut self, sour: SourceCitation) {
+        self.sources.push(sour);
+    }
+
+    pub fn add_custom_data(&mut self, data: UserDefinedData) {
+        self.custom_data.push(data)
     }
 }
 
 impl Parser for Gender {
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         tokenizer.next_token();
+
         if let Token::LineValue(gender_string) = &tokenizer.current_token {
-            *self = match gender_string.as_str() {
-                "M" => Gender::Male,
-                "F" => Gender::Female,
-                "N" => Gender::Nonbinary,
-                "U" => Gender::Unknown,
+            self.value = match gender_string.as_str() {
+                "M" => GenderType::Male,
+                "F" => GenderType::Female,
+                "X" => GenderType::Nonbinary,
+                "U" => GenderType::Unknown,
                 _ => panic!(
                     "{} Unknown gender value {} ({})",
                     tokenizer.debug(),
@@ -166,13 +232,34 @@ impl Parser for Gender {
                     level
                 ),
             };
-        } else {
-            panic!(
-                "Expected gender LineValue, found {:?}",
-                tokenizer.current_token
-            );
+            tokenizer.next_token();
         }
-        tokenizer.next_token();
+
+        loop {
+            if let Token::Level(cur_level) = tokenizer.current_token {
+                if cur_level <= level {
+                    break;
+                }
+            }
+
+            match &tokenizer.current_token {
+                Token::Tag(tag) => match tag.as_str() {
+                    "FACT" => self.fact = Some(tokenizer.take_continued_text(level + 1)),
+                    "SOUR" => self.add_source_citation(SourceCitation::new(tokenizer, level + 1)),
+                    _ => panic!("{}, Unhandled Gender tag: {}", tokenizer.debug(), tag),
+                },
+                Token::CustomTag(tag) => {
+                    let tag_clone = tag.clone();
+                    self.add_custom_data(tokenizer.parse_custom_tag(tag_clone));
+                }
+                Token::Level(_) => tokenizer.next_token(),
+                _ => panic!(
+                    "{}, Unhandled Gender token: {:?}",
+                    tokenizer.debug(),
+                    tokenizer.current_token
+                ),
+            }
+        }
     }
 }
 

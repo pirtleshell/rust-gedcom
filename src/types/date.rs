@@ -112,8 +112,6 @@ impl Parser for Date {
 ///     2 DATE 1 APR 1998
 ///     3 TIME 12:34:56.789
 ///     2 NOTE A note
-///     3 CONT Note continued here. The word TE
-///     3 CONC ST should not be broken!
 ///     0 TRLR";
 ///
 /// let mut doc = GedcomDocument::new(sample.chars());
@@ -128,7 +126,7 @@ impl Parser for Date {
 /// assert_eq!(date.time.as_ref().unwrap(), "12:34:56.789");
 ///
 /// let chan_note = chan.note.as_ref().unwrap();
-/// assert_eq!(chan_note.value.as_ref().unwrap(), "A note\nNote continued here. The word TEST should not be broken!");
+/// assert_eq!(chan_note.value.as_ref().unwrap(), "A note");
 /// ```
 #[derive(Debug, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]

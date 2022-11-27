@@ -1,7 +1,7 @@
 use crate::{
     Parser,
     tokenizer::{Token, Tokenizer},
-    types::{Copyright, Corporation, Date, Note},
+    types::{Corporation, Date, Note},
 };
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
@@ -64,7 +64,7 @@ pub struct Header {
     /// tag: SUBN
     pub submission_tag: Option<String>,
     /// tag: COPR
-    pub copyright: Option<Copyright>,
+    pub copyright: Option<String>,
     /// tag: LANG (HEAD-LANG), a default language which may be used to interpret any Text-typed
     /// payloads that lack a specific language tag from a LANG structure. An application may choose
     /// to use a different default based on its knowledge of the language preferences of the user.
@@ -105,18 +105,18 @@ impl Parser for Header {
         while tokenizer.current_token != Token::Level(level) {
             match &tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
-                    "GEDC" => self.gedcom = Some(GedcomMeta::new(tokenizer, 1)),
-                    "SOUR" => self.source = Some(HeadSour::new(tokenizer, 1)),
+                    "GEDC" => self.gedcom = Some(GedcomMeta::new(tokenizer, level + 1)),
+                    "SOUR" => self.source = Some(HeadSour::new(tokenizer, level + 1)),
                     "DEST" => self.destination = Some(tokenizer.take_line_value()),
-                    "DATE" => self.date = Some(Date::new(tokenizer, 1)),
+                    "DATE" => self.date = Some(Date::new(tokenizer, level + 1)),
                     "SUBM" => self.submitter_tag = Some(tokenizer.take_line_value()),
                     "SUBN" => self.submission_tag = Some(tokenizer.take_line_value()),
                     "FILE" => self.filename = Some(tokenizer.take_line_value()),
-                    "COPR" => self.copyright = Some(Copyright::new(tokenizer, 1)),
-                    "CHAR" => self.encoding = Some(Encoding::new(tokenizer, 1)),
+                    "COPR" => self.copyright = Some(tokenizer.take_continued_text(level + 1)),
+                    "CHAR" => self.encoding = Some(Encoding::new(tokenizer, level + 1)),
                     "LANG" => self.language = Some(tokenizer.take_line_value()),
-                    "NOTE" => self.note = Some(Note::new(tokenizer, 1)),
-                    "PLAC" => self.place = Some(HeadPlac::new(tokenizer, 1)),
+                    "NOTE" => self.note = Some(Note::new(tokenizer, level + 1)),
+                    "PLAC" => self.place = Some(HeadPlac::new(tokenizer, level + 1)),
                     _ => panic!("{} Unhandled Header Tag: {}", tokenizer.debug(), tag),
                 },
                 Token::CustomTag(tag) => {
@@ -385,7 +385,7 @@ impl Parser for HeadSour {
 /// assert_eq!(sour_data.value.unwrap(), "Name of source data");
 /// assert_eq!(sour_data.date.unwrap().value.unwrap(), "1 JAN 1998");
 /// assert_eq!(
-///     sour_data.copyright.unwrap().value.unwrap(),
+///     sour_data.copyright.unwrap(),
 ///     "Copyright of source data"
 /// );
 /// ```
@@ -396,7 +396,7 @@ pub struct HeadSourData {
     /// tag: DATE
     pub date: Option<Date>,
     /// tag: COPR
-    pub copyright: Option<Copyright>,
+    pub copyright: Option<String>,
 }
 
 impl HeadSourData {
@@ -422,7 +422,7 @@ impl Parser for HeadSourData {
             match &tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
                     "DATE" => self.date = Some(Date::new(tokenizer, level + 1)),
-                    "COPR" => self.copyright = Some(Copyright::new(tokenizer, level + 1)),
+                    "COPR" => self.copyright = Some(tokenizer.take_continued_text(level+1)),
                     _ => panic!(
                         "{} unhandled DATA tag in header: {}",
                         tokenizer.debug(),

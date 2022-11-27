@@ -154,7 +154,7 @@ impl Parser for SourceCitation {
 
             match &tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
-                    "PAGE" => self.page = Some(tokenizer.take_line_value()),
+                    "PAGE" => self.page = Some(tokenizer.take_continued_text(level + 1)),
                     "DATA" => self.data = Some(SourceCitationData::new(tokenizer, level + 1)),
                     "NOTE" => self.note = Some(Note::new(tokenizer, level + 1)),
                     "QUAY" => {

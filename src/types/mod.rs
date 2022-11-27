@@ -46,9 +46,6 @@ pub use translation::*;
 mod repository;
 pub use repository::*;
 
-mod copyright;
-pub use copyright::*;
-
 mod corporation;
 pub use corporation::*;
 

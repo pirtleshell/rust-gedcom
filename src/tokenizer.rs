@@ -196,13 +196,13 @@ impl<'a> Tokenizer<'a> {
                         value.push_str(&self.take_line_value())
                     }
                     "CONC" => {
-                        value.push(' ');
+                        // value.push(' ');
                         value.push_str(&self.take_line_value())
                     }
                     _ => panic!("{} Unhandled Continuation Tag: {}", self.debug(), tag),
                 },
                 Token::Level(_) => self.next_token(),
-                _ => panic!("Unhandled Continuation Token: {:?}", self.current_token),
+                _ => panic!("{} Unhandled Continuation Token: {:?}", self.debug(), self.current_token),
             }
         }
         value

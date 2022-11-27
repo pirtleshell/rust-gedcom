@@ -1,13 +1,8 @@
 use crate::{
-    Parser,
     tokenizer::{Token, Tokenizer},
-    types::{Note, SourceCitation, Xref},
+    types::{ChangeDate, Note, SourceCitation, Xref},
+    Parser,
 };
-
-use super::ChangeDate;
-
-#[derive(Debug)]
-#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 
 /// MultimediaRecord refers to 1 or more external digital files, and may provide some
 /// additional information about the files and the media they encode.
@@ -49,6 +44,8 @@ use super::ChangeDate;
 /// let rin = obje.automated_record_id.as_ref().unwrap();
 /// assert_eq!(rin, "Automated Id");
 /// ```
+#[derive(Debug)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct MultimediaRecord {
     /// Optional reference to link to this submitter
     pub xref: Option<Xref>,
@@ -289,7 +286,6 @@ impl Parser for MultimediaFileRefn {
     }
 }
 
-
 /// MultimediaFormat indicates the format of the multimedia data associated with the specific
 /// GEDCOM context. This allows processors to determine whether they can process the data object.
 /// Any linked files should contain the data required, in the indicated format, to process the file
@@ -351,7 +347,11 @@ impl Parser for MultimediaFormat {
             match &tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
                     "TYPE" => self.source_media_type = Some(tokenizer.take_line_value()),
-                    _ => panic!("{} Unhandled MultimediaFormat Tag: {}", tokenizer.debug(), tag),
+                    _ => panic!(
+                        "{} Unhandled MultimediaFormat Tag: {}",
+                        tokenizer.debug(),
+                        tag
+                    ),
                 },
                 _ => panic!(
                     "Unhandled MultimediaFormat Token: {:?}",

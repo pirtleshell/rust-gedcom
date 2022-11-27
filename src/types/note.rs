@@ -1,7 +1,7 @@
 use crate::{
-    Parser,
     tokenizer::{Token, Tokenizer},
     types::{Source, Translation},
+    Parser,
 };
 
 #[cfg(feature = "json")]
@@ -81,10 +81,7 @@ impl Note {
 impl Parser for Note {
     /// parse handles the NOTE tag
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
-        let mut value = String::new();
-
-        value.push_str(&tokenizer.take_line_value());
-
+        self.value = Some(tokenizer.take_continued_text(level));
         loop {
             if let Token::Level(cur_level) = tokenizer.current_token {
                 if cur_level <= level {
@@ -97,19 +94,11 @@ impl Parser for Note {
                     "MIME" => self.mime = Some(tokenizer.take_line_value()),
                     "TRANS" => self.translation = Some(Translation::new(tokenizer, level + 1)),
                     "LANG" => self.language = Some(tokenizer.take_line_value()),
-                    "CONC" => value.push_str(&tokenizer.take_line_value()),
-                    "CONT" => {
-                        value.push('\n');
-                        value.push_str(&tokenizer.take_line_value());
-                    }
                     _ => panic!("{} unhandled NOTE tag: {}", tokenizer.debug(), tag),
                 },
                 Token::Level(_) => tokenizer.next_token(),
                 _ => panic!("Unexpected NOTE token: {:?}", &tokenizer.current_token),
             }
-        }
-        if value != "" {
-            self.value = Some(value);
         }
     }
 }
