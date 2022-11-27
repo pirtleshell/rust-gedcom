@@ -18,6 +18,7 @@ pub enum EventType {
     Death,
     Christening,
     Marriage,
+    Cremation,
     Residence,
     SourceData(String),
 
@@ -73,9 +74,10 @@ impl Event {
             "CHR" => EventType::Christening,
             "DEAT" => EventType::Death,
             "MARR" => EventType::Marriage,
+            "CREM" => EventType::Cremation,
             "RESI" => EventType::Residence,
             "OTHER" => EventType::Other,
-            _ => panic!("Unrecognized event tag: {}", tag),
+            _ => panic!("Unrecognized EventType tag: {}", tag),
         }
     }
 
