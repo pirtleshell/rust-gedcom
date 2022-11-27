@@ -1,6 +1,6 @@
 use crate::{
     tokenizer::{Token, Tokenizer},
-    types::{ChildToFamilyLink, Date, Note, SourceCitation},
+    types::{Date, FamilyLink, Note, SourceCitation},
     Parser,
 };
 
@@ -41,7 +41,7 @@ pub struct Event {
     pub date: Option<Date>,
     pub place: Option<String>,
     pub note: Option<Note>,
-    pub child_to_family_link: Option<ChildToFamilyLink>,
+    pub child_to_family_link: Option<FamilyLink>,
     pub citations: Vec<SourceCitation>,
 }
 
@@ -152,8 +152,9 @@ impl Parser for Event {
                     "PLAC" => self.place = Some(tokenizer.take_line_value()),
                     "SOUR" => self.add_citation(SourceCitation::new(tokenizer, level + 1)),
                     "FAMC" => {
+                        let tag_clone = tag.clone();
                         self.child_to_family_link =
-                            Some(ChildToFamilyLink::new(tokenizer, level + 1))
+                            Some(FamilyLink::new(tokenizer, level + 1, tag_clone.as_str()))
                     }
                     "NOTE" => self.note = Some(Note::new(tokenizer, level + 1)),
                     _ => panic!("{} Unhandled Event Tag: {}", tokenizer.debug(), tag),

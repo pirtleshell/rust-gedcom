@@ -1,4 +1,2 @@
 /target
 .DS_Store
-/tests/tmp.rs
-/tests/fixtures/tmp.ged

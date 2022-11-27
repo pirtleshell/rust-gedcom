@@ -44,9 +44,9 @@ impl Individual {
 
     pub fn add_family(&mut self, link: FamilyLink) {
         let mut do_add = true;
-        let xref = &link.0;
-        for FamilyLink(family, _, _) in &self.families {
-            if family.as_str() == xref.as_str() {
+        let xref = &link.xref;
+        for family in &self.families {
+            if family.xref.as_str() == xref.as_str() {
                 do_add = false;
             }
         }
@@ -130,9 +130,9 @@ impl Parser for Individual {
 #[derive(Debug)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub enum GenderType {
-    /// Tag 'X'
+    /// Tag 'M'
     Male,
-    /// TAG 'M'
+    /// TAG 'F'
     Female,
     /// Tag 'X'; "Does not fit the typical definition of only Male or only Female"
     Nonbinary,
@@ -263,25 +263,144 @@ impl Parser for Gender {
     }
 }
 
-#[derive(Debug)]
+/// FamilyLinkType is a code used to indicates whether a family link is a pointer to a family
+/// where this person is a child (FAMC tag), or it is pointer to a family where this person is a
+/// spouse or parent (FAMS tag). See GEDCOM 5.5 spec, page 26.
+#[derive(Clone, Debug)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-enum FamilyLinkType {
+pub enum FamilyLinkType {
     Spouse,
     Child,
 }
 
-#[derive(Debug)]
+impl FamilyLinkType {
+    pub fn get_str(&self) -> &str {
+        match self {
+            FamilyLinkType::Child => "FAMC",
+            FamilyLinkType::Spouse => "FAMS",
+        }
+    }
+}
+
+/// Pedigree is a code used to indicate the child to family relationship for pedigree navigation
+/// purposes. See GEDCOM 5.5 spec, page 57.
+#[derive(Clone, Debug)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-enum Pedigree {
+pub enum Pedigree {
+    /// Adopted indicates adoptive parents.
     Adopted,
+    /// Birth indicates birth parents.
     Birth,
+    /// Foster indicates child was included in a foster or guardian family.
     Foster,
+    /// Sealing indicates child was sealed to parents other than birth parents.
     Sealing,
 }
 
-#[derive(Debug)]
+impl Pedigree {
+    pub fn get_str(&self) -> &str {
+        match self {
+            Pedigree::Birth => "birth",
+            Pedigree::Foster => "foster",
+            Pedigree::Adopted => "adopted",
+            Pedigree::Sealing => "sealing",
+        }
+    }
+}
+
+/// ChildLinkStatus is a A status code that allows passing on the users opinion of the status of a
+/// child to family link. See GEDCOM 5.5 spec, page 44.
+#[derive(Clone, Debug)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-pub struct FamilyLink(Xref, FamilyLinkType, Option<Pedigree>);
+pub enum ChildLinkStatus {
+    /// Challenged indicates linking this child to this family is suspect, but the linkage has been
+    /// neither proven nor disproven.
+    Challenged,
+    /// Disproven indicates there has been a claim by some that this child belongs to this family,
+    /// but the linkage has been disproven.
+    Disproven,
+    /// Proven indicates there has been a claim by some that this child does not belong to this
+    /// family, but the linkage has been proven.
+    Proven,
+}
+
+impl ChildLinkStatus {
+    pub fn get_str(&self) -> &str {
+        match self {
+            ChildLinkStatus::Proven => "proven",
+            ChildLinkStatus::Disproven => "disproven",
+            ChildLinkStatus::Challenged => "challenged",
+        }
+    }
+}
+
+/// AdoptedByWhichParent is a code which shows which parent in the associated family record adopted
+/// this person. See GEDCOM 5.5 spec, page 42.
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+pub enum AdoptedByWhichParent {
+    /// The HUSBand in the associated family adopted this person.
+    Husband,
+    /// The WIFE in the associated family adopted this person.
+    Wife,
+    /// Both HUSBand and WIFE adopted this person.
+    Both,
+}
+
+impl AdoptedByWhichParent {
+    pub fn get_str(&self) -> &str {
+        match self {
+            AdoptedByWhichParent::Wife => "WIFE",
+            AdoptedByWhichParent::Husband => "HUSB",
+            AdoptedByWhichParent::Both => "BOTH",
+        }
+    }
+}
+
+/// FamilyLink indicates the normal lineage links through the use of pointers from the individual
+/// to a family through either the FAMC tag or the FAMS tag. The FAMC tag provides a pointer to a
+/// family where this person is a child. The FAMS tag provides a pointer to a family where this
+/// person is a spouse or parent. See GEDCOM 5.5 spec, page 26.
+///
+/// # Example
+///
+/// ```rust
+/// use gedcom::GedcomDocument;
+/// let sample = "\
+///    0 HEAD\n\
+///    1 GEDC\n\
+///    2 VERS 5.5\n\
+///    0 @PERSON1@ INDI\n\
+///    1 NAME given name\n\
+///    1 SEX M\n\
+///    1 ADOP\n\
+///    2 DATE CAL 31 DEC 1897\n\
+///    2 FAMC @ADOPTIVE_PARENTS@\n\
+///    3 PEDI adopted
+///    3 ADOP BOTH\n\
+///    3 STAT proven
+///    0 TRLR";
+///
+/// let mut doc = GedcomDocument::new(sample.chars());
+/// let data = doc.parse_document();
+///
+/// let famc = data.individuals[0].events[0].child_to_family_link.as_ref().unwrap();
+/// assert_eq!(famc.xref, "@ADOPTIVE_PARENTS@");
+/// assert_eq!(famc.family_link_type.get_str(), "FAMC");
+/// assert_eq!(famc.pedigree_linkage_type.as_ref().unwrap().get_str(), "adopted");
+/// assert_eq!(famc.child_linkage_status.as_ref().unwrap().get_str(), "proven");
+/// assert_eq!(famc.adopted_by.as_ref().unwrap().get_str(), "BOTH");
+/// ```
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+pub struct FamilyLink {
+    pub xref: Xref,
+    pub family_link_type: FamilyLinkType,
+    pub pedigree_linkage_type: Option<Pedigree>,
+    pub child_linkage_status: Option<ChildLinkStatus>,
+    pub adopted_by: Option<AdoptedByWhichParent>,
+    pub note: Option<Note>,
+}
 
 impl FamilyLink {
     #[must_use]
@@ -292,19 +411,50 @@ impl FamilyLink {
             "FAMS" => FamilyLinkType::Spouse,
             _ => panic!("Unrecognized family type tag: {}", tag),
         };
-        let mut family_link = FamilyLink(xref, link_type, None);
+        let mut family_link = FamilyLink {
+            xref,
+            family_link_type: link_type,
+            pedigree_linkage_type: None,
+            child_linkage_status: None,
+            adopted_by: None,
+            note: None,
+        };
         family_link.parse(tokenizer, level);
         family_link
     }
 
     pub fn set_pedigree(&mut self, pedigree_text: &str) {
-        self.2 = match pedigree_text.to_lowercase().as_str() {
+        self.pedigree_linkage_type = match pedigree_text.to_lowercase().as_str() {
             "adopted" => Some(Pedigree::Adopted),
             "birth" => Some(Pedigree::Birth),
             "foster" => Some(Pedigree::Foster),
             "sealing" => Some(Pedigree::Sealing),
-            _ => panic!("Unrecognized family link pedigree: {}", pedigree_text),
+            _ => panic!("Unrecognized FamilyLink.pedigree code: {}", pedigree_text),
         };
+    }
+
+    pub fn set_child_linkage_status(&mut self, status_text: &str) {
+        self.child_linkage_status = match status_text.to_lowercase().as_str() {
+            "challenged" => Some(ChildLinkStatus::Challenged),
+            "disproven" => Some(ChildLinkStatus::Disproven),
+            "proven" => Some(ChildLinkStatus::Proven),
+            _ => panic!(
+                "Unrecognized FamilyLink.child_linkage_status code: {}",
+                status_text
+            ),
+        }
+    }
+
+    pub fn set_adopted_by_which_parent(&mut self, adopted_by_text: &str) {
+        self.adopted_by = match adopted_by_text.to_lowercase().as_str() {
+            "husb" => Some(AdoptedByWhichParent::Husband),
+            "wife" => Some(AdoptedByWhichParent::Wife),
+            "both" => Some(AdoptedByWhichParent::Both),
+            _ => panic!(
+                "Unrecognized FamilyLink.adopted_by code: {}",
+                adopted_by_text
+            ),
+        }
     }
 }
 
@@ -319,6 +469,10 @@ impl Parser for FamilyLink {
             match &tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
                     "PEDI" => self.set_pedigree(tokenizer.take_line_value().as_str()),
+                    "STAT" => self.set_child_linkage_status(&tokenizer.take_line_value().as_str()),
+                    "ADOP" => {
+                        self.set_adopted_by_which_parent(&tokenizer.take_line_value().as_str())
+                    }
                     _ => panic!("{} Unhandled FamilyLink Tag: {}", tokenizer.debug(), tag),
                 },
                 Token::Level(_) => tokenizer.next_token(),

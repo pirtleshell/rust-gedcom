@@ -44,9 +44,9 @@ use types::{
 /// ```rust
 /// use gedcom::GedcomDocument;
 /// let sample = "\
-///    0 HEAD
-///    1 GEDC
-///    2 VERS 5.5
+///    0 HEAD\n\
+///    1 GEDC\n\
+///    2 VERS 5.5\n\
 ///    0 TRLR";
 ///
 /// let mut doc = GedcomDocument::new(sample.chars());
@@ -88,16 +88,16 @@ pub trait Parser {
 /// ```rust
 /// use gedcom::GedcomDocument;
 /// let sample = "\
-///     0 HEAD
-///     1 GEDC
-///     2 VERS 5.5
-///     0 @SUBMITTER@ SUBM
-///     0 @PERSON1@ INDI
-///     0 @FAMILY1@ FAM
-///     0 @R1@ REPO
-///     0 @SOURCE1@ SOUR
+///     0 HEAD\n\
+///     1 GEDC\n\
+///     2 VERS 5.5\n\
+///     0 @SUBMITTER@ SUBM\n\
+///     0 @PERSON1@ INDI\n\
+///     0 @FAMILY1@ FAM\n\
+///     0 @R1@ REPO\n\
+///     0 @SOURCE1@ SOUR\n\
 ///     0 @MEDIA1@ OBJE\n\
-///     0 _MYOWNTAG This is a non-standard tag. Not recommended but allowed
+///     0 _MYOWNTAG This is a non-standard tag. Not recommended but allowed\n\
 ///     0 TRLR";
 ///
 /// let mut doc = GedcomDocument::new(sample.chars());
