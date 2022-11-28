@@ -1,7 +1,7 @@
 use crate::{
-    Parser,
     tokenizer::{Token, Tokenizer},
     types::{Date, EventDetail, Note, RepoCitation, UserDefinedData, Xref},
+    Parser,
 };
 
 #[cfg(feature = "json")]
@@ -400,13 +400,19 @@ impl CertaintyAssessment {
     }
 
     pub fn get_int(&self) -> Option<u8> {
-      match &self {
-        CertaintyAssessment::Unreliable => Some(0),
-        CertaintyAssessment::Questionable => Some(1),
-        CertaintyAssessment::Secondary => Some(2),
-        CertaintyAssessment::Direct => Some(3),
-        CertaintyAssessment::None => None,
-      }
+        match &self {
+            CertaintyAssessment::Unreliable => Some(0),
+            CertaintyAssessment::Questionable => Some(1),
+            CertaintyAssessment::Secondary => Some(2),
+            CertaintyAssessment::Direct => Some(3),
+            CertaintyAssessment::None => None,
+        }
+    }
+}
+
+impl ToString for CertaintyAssessment {
+    fn to_string(&self) -> String {
+        format!("{:?}", self)
     }
 }
 

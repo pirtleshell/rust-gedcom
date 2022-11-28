@@ -1,7 +1,8 @@
 use crate::{
     tokenizer::{Token, Tokenizer},
     types::{
-        event::HasEvents, EventDetail, MultimediaRecord, Note, SourceCitation, UserDefinedData, Xref,
+        event::HasEvents, Date, EventDetail, MultimediaRecord, Note,
+        SourceCitation, UserDefinedData, Xref,
     },
     Parser,
 };
@@ -18,9 +19,10 @@ pub struct Individual {
     pub sex: Option<Gender>,
     pub families: Vec<FamilyLink>,
     pub custom_data: Vec<UserDefinedData>,
+    pub attributes: Vec<AttributeDetail>,
     pub source: Vec<SourceCitation>,
-    pub multimedia: Vec<MultimediaRecord>,
     pub events: Vec<EventDetail>,
+    pub multimedia: Vec<MultimediaRecord>,
     pub last_updated: Option<String>,
 }
 
@@ -33,6 +35,7 @@ impl Individual {
             sex: None,
             events: Vec::new(),
             families: Vec::new(),
+            attributes: Vec::new(),
             custom_data: Vec::new(),
             last_updated: None,
             source: Vec::new(),
@@ -66,6 +69,10 @@ impl Individual {
     pub fn add_multimedia(&mut self, multimedia: MultimediaRecord) {
         self.multimedia.push(multimedia);
     }
+
+    pub fn add_attribute(&mut self, attribute: AttributeDetail) {
+        self.attributes.push(attribute);
+    }
 }
 
 impl HasEvents for Individual {
@@ -86,6 +93,7 @@ impl Parser for Individual {
         while tokenizer.current_token != Token::Level(level) {
             match &tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
+                    // TODO handle xref
                     "NAME" => self.name = Some(Name::new(tokenizer, level + 1)),
                     "SEX" => self.sex = Some(Gender::new(tokenizer, level + 1)),
                     "ADOP" | "BIRT" | "BAPM" | "BARM" | "BASM" | "BLES" | "BURI" | "CENS"
@@ -94,6 +102,16 @@ impl Parser for Individual {
                     | "MARR" => {
                         let tag_clone = tag.clone();
                         self.add_event(EventDetail::new(tokenizer, level + 1, tag_clone.as_str()));
+                    }
+                    "CAST" | "DSCR" | "EDUC" | "IDNO" | "NATI" | "NCHI" | "NMR" | "OCCU"
+                    | "PROP" | "RELI" | "SSN" | "TITL" | "FACT" => {
+                        // RESI should be an attribute or an event?
+                        let tag_clone = tag.clone();
+                        self.add_attribute(AttributeDetail::new(
+                            tokenizer,
+                            level + 1,
+                            tag_clone.as_str(),
+                        ));
                     }
                     "FAMC" | "FAMS" => {
                         let tag_clone = tag.clone();
@@ -108,7 +126,6 @@ impl Parser for Individual {
                     "SOUR" => {
                         self.add_source_citation(SourceCitation::new(tokenizer, level + 1));
                     }
-                    // TODO handle xref
                     "OBJE" => {
                         self.add_multimedia(MultimediaRecord::new(tokenizer, level + 1, None))
                     }
@@ -145,7 +162,6 @@ impl ToString for GenderType {
         format!("{:?}", self)
     }
 }
-
 
 /// Gender (tag: SEX); This can describe an individual’s reproductive or sexual anatomy at birth.
 /// Related concepts of gender identity or sexual preference are not currently given their own tag.
@@ -275,7 +291,6 @@ impl ToString for FamilyLinkType {
     }
 }
 
-
 /// Pedigree is a code used to indicate the child to family relationship for pedigree navigation
 /// purposes. See GEDCOM 5.5 spec, page 57.
 #[derive(Clone, Debug)]
@@ -296,7 +311,6 @@ impl ToString for Pedigree {
         format!("{:?}", self)
     }
 }
-
 
 /// ChildLinkStatus is a A status code that allows passing on the users opinion of the status of a
 /// child to family link. See GEDCOM 5.5 spec, page 44.
@@ -320,7 +334,6 @@ impl ToString for ChildLinkStatus {
     }
 }
 
-
 /// AdoptedByWhichParent is a code which shows which parent in the associated family record adopted
 /// this person. See GEDCOM 5.5 spec, page 42.
 #[derive(Clone, Debug)]
@@ -339,7 +352,6 @@ impl ToString for AdoptedByWhichParent {
         format!("{:?}", self)
     }
 }
-
 
 /// FamilyLink indicates the normal lineage links through the use of pointers from the individual
 /// to a family through either the FAMC tag or the FAMS tag. The FAMC tag provides a pointer to a
@@ -524,6 +536,192 @@ impl Parser for Name {
                 Token::Level(_) => tokenizer.next_token(),
                 _ => panic!("Unhandled Name Token: {:?}", tokenizer.current_token),
             }
+        }
+    }
+}
+
+/// IndividualAttribute indicates other attributes or facts are used to describe an individual's
+/// actions, physical description, employment, education, places of residence, etc. These are not
+/// generally thought of as events. However, they are often described like events because they were
+/// observed at a particular time and/or place. See GEDCOM 5.5 spec, page
+/// 33.
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+pub enum IndividualAttribute {
+    CastName,
+    PhysicalDescription,
+    ScholasticAchievement,
+    NationalIDNumber,
+    NationalOrTribalOrigin,
+    CountOfChildren,
+    CountOfMarriages,
+    Occupation,
+    Possessions,
+    ReligiousAffiliation,
+    ResidesAt,
+    SocialSecurityNumber,
+    NobilityTypeTitle,
+    Fact,
+}
+
+impl ToString for IndividualAttribute {
+    fn to_string(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+/// AttributeDetail indicates other attributes or facts are used to describe an individual's
+/// actions, physical description, employment, education, places of residence, etc. GEDCOM 5.x
+/// allows them to be recorded in the same way as events. The attribute definition allows a value
+/// on the same line as the attribute tag. In addition, it allows a subordinate date period, place
+/// and/or address, etc. to be transmitted, just as the events are. Previous versions, which
+/// handled just a tag and value, can be read as usual by handling the subordinate attribute detail
+/// as an exception. . See GEDCOM 5.5 spec, page 69.
+///
+/// # Example
+///
+/// ```rust
+/// use gedcom::GedcomDocument;
+/// let sample = "\
+///    0 HEAD\n\
+///    1 GEDC\n\
+///    2 VERS 5.5\n\
+///    0 @PERSON1@ INDI\n\
+///    1 DSCR Physical description\n\
+///    2 DATE 31 DEC 1997\n\
+///    2 PLAC The place\n\
+///    2 SOUR @SOURCE1@\n\
+///    3 PAGE 42\n\
+///    3 DATA\n\
+///    4 DATE 31 DEC 1900\n\
+///    4 TEXT a sample text\n\
+///    5 CONT Sample text continued here. The word TE\n\
+///    5 CONC ST should not be broken!\n\
+///    3 QUAY 3\n\
+///    3 NOTE A note\n\
+///    4 CONT Note continued here. The word TE\n\
+///    4 CONC ST should not be broken!\n\
+///    2 NOTE PHY_DESCRIPTION event note (the physical characteristics of a person, place, or thing)\n\
+///    3 CONT Note continued here. The word TE\n\
+///    3 CONC ST should not be broken!\n\
+///    0 TRLR";
+///
+/// let mut doc = GedcomDocument::new(sample.chars());
+/// let data = doc.parse_document();
+///
+/// assert_eq!(data.individuals.len(), 1);
+///
+/// let attr = &data.individuals[0].attributes[0];
+/// assert_eq!(attr.attribute.to_string(), "PhysicalDescription");
+/// assert_eq!(attr.value.as_ref().unwrap(), "Physical description");
+/// assert_eq!(attr.date.as_ref().unwrap().value.as_ref().unwrap(), "31 DEC 1997");
+/// assert_eq!(attr.place.as_ref().unwrap(), "The place");
+///
+/// let a_sour = &data.individuals[0].attributes[0].sources[0];
+/// assert_eq!(a_sour.page.as_ref().unwrap(), "42");
+/// assert_eq!(a_sour.data.as_ref().unwrap().date.as_ref().unwrap().value.as_ref().unwrap(), "31 DEC 1900");
+/// assert_eq!(a_sour.data.as_ref().unwrap().text.as_ref().unwrap().value.as_ref().unwrap(), "a sample text\nSample text continued here. The word TEST should not be broken!");
+/// assert_eq!(a_sour.certainty_assessment.as_ref().unwrap().to_string(), "Direct");
+/// assert_eq!(a_sour.note.as_ref().unwrap().value.as_ref().unwrap(), "A note\nNote continued here. The word TEST should not be broken!");
+/// ```
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+pub struct AttributeDetail {
+    pub attribute: IndividualAttribute,
+    pub value: Option<String>,
+    pub place: Option<String>,
+    pub date: Option<Date>,
+    pub sources: Vec<SourceCitation>,
+    pub note: Option<Note>,
+    /// attribute_type handles the TYPE tag, a descriptive word or phrase used to further classify the
+    /// parent event or attribute tag. This should be used to define what kind of identification
+    /// number or fact classification is being defined.
+    pub attribute_type: Option<String>,
+}
+
+impl AttributeDetail {
+    #[must_use]
+    pub fn new(tokenizer: &mut Tokenizer, level: u8, tag: &str) -> AttributeDetail {
+        let mut attribute = AttributeDetail {
+            attribute: Self::from_tag(tag),
+            place: None,
+            value: None,
+            date: None,
+            sources: Vec::new(),
+            note: None,
+            attribute_type: None,
+        };
+        attribute.parse(tokenizer, level);
+        attribute
+    }
+
+    pub fn from_tag(tag: &str) -> IndividualAttribute {
+        match tag {
+            "CAST" => IndividualAttribute::CastName,
+            "DSCR" => IndividualAttribute::PhysicalDescription,
+            "EDUC" => IndividualAttribute::ScholasticAchievement,
+            "IDNO" => IndividualAttribute::NationalIDNumber,
+            "NATI" => IndividualAttribute::NationalOrTribalOrigin,
+            "NCHI" => IndividualAttribute::CountOfChildren,
+            "NMR" => IndividualAttribute::CountOfMarriages,
+            "OCCU" => IndividualAttribute::Occupation,
+            "PROP" => IndividualAttribute::Possessions,
+            "RELI" => IndividualAttribute::ReligiousAffiliation,
+            "RESI" => IndividualAttribute::ResidesAt,
+            "SSN" => IndividualAttribute::SocialSecurityNumber,
+            "TITL" => IndividualAttribute::NobilityTypeTitle,
+            "FACT" => IndividualAttribute::Fact,
+            _ => panic!("Unrecognized IndividualAttribute tag: {}", tag),
+        }
+    }
+
+    pub fn add_source_citation(&mut self, sour: SourceCitation) {
+        self.sources.push(sour);
+    }
+}
+
+impl Parser for AttributeDetail {
+    fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
+        tokenizer.next_token();
+
+        let mut value = String::new();
+
+        if let Token::LineValue(val) = &tokenizer.current_token {
+            value.push_str(&val);
+            tokenizer.next_token();
+        }
+
+        loop {
+            if let Token::Level(cur_level) = &tokenizer.current_token {
+                if cur_level <= &level {
+                    break;
+                }
+            }
+            // tokenizer.next_token();
+            match &tokenizer.current_token {
+                Token::Tag(tag) => match tag.as_str() {
+                    "DATE" => self.date = Some(Date::new(tokenizer, level + 1)),
+                    "SOUR" => self.add_source_citation(SourceCitation::new(tokenizer, level + 1)),
+                    "PLAC" => self.place = Some(tokenizer.take_line_value()),
+                    "NOTE" => self.note = Some(Note::new(tokenizer, level + 1)),
+                    "TYPE" => self.attribute_type = Some(tokenizer.take_continued_text(level + 1)),
+                    _ => panic!(
+                        "{}, Unhandled AttributeDetail tag: {}",
+                        tokenizer.debug(),
+                        tag
+                    ),
+                },
+                Token::Level(_) => tokenizer.next_token(),
+                _ => panic!(
+                    "{}, Unhandled AttributeDetail token: {:?}",
+                    tokenizer.debug(),
+                    tokenizer.current_token
+                ),
+            }
+        }
+
+        if &value != "" {
+            self.value = Some(value);
         }
     }
 }
