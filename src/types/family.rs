@@ -1,7 +1,7 @@
 use crate::{
     Parser,
     tokenizer::{Token, Tokenizer},
-    types::{event::HasEvents, Event},
+    types::{event::HasEvents, EventDetail},
 };
 
 #[cfg(feature = "json")]
@@ -21,7 +21,7 @@ pub struct Family {
     pub individual2: Option<Xref>, // mapped from WIFE
     pub children: Vec<Xref>,
     pub num_children: Option<u8>,
-    events: Vec<Event>,
+    events: Vec<EventDetail>,
 }
 
 impl Family {
@@ -69,7 +69,7 @@ impl Parser for Family {
 
             match &tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
-                    "MARR" => self.add_event(Event::new(tokenizer, level + 1, "MARR")),
+                    "MARR" => self.add_event(EventDetail::new(tokenizer, level + 1, "MARR")),
                     "HUSB" => self.set_individual1(tokenizer.take_line_value()),
                     "WIFE" => self.set_individual2(tokenizer.take_line_value()),
                     "CHIL" => self.add_child(tokenizer.take_line_value()),
@@ -83,7 +83,7 @@ impl Parser for Family {
 }
 
 impl HasEvents for Family {
-    fn add_event(&mut self, event: Event) -> () {
+    fn add_event(&mut self, event: EventDetail) -> () {
         let event_type = &event.event;
         for e in &self.events {
             if &e.event == event_type {
@@ -92,7 +92,7 @@ impl HasEvents for Family {
         }
         self.events.push(event);
     }
-    fn events(&self) -> Vec<Event> {
+    fn events(&self) -> Vec<EventDetail> {
         self.events.clone()
     }
 }

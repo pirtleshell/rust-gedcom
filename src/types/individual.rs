@@ -1,7 +1,7 @@
 use crate::{
     tokenizer::{Token, Tokenizer},
     types::{
-        event::HasEvents, Event, MultimediaRecord, Note, SourceCitation, UserDefinedData, Xref,
+        event::HasEvents, EventDetail, MultimediaRecord, Note, SourceCitation, UserDefinedData, Xref,
     },
     Parser,
 };
@@ -20,7 +20,7 @@ pub struct Individual {
     pub custom_data: Vec<UserDefinedData>,
     pub source: Vec<SourceCitation>,
     pub multimedia: Vec<MultimediaRecord>,
-    pub events: Vec<Event>,
+    pub events: Vec<EventDetail>,
     pub last_updated: Option<String>,
 }
 
@@ -69,10 +69,10 @@ impl Individual {
 }
 
 impl HasEvents for Individual {
-    fn add_event(&mut self, event: Event) -> () {
+    fn add_event(&mut self, event: EventDetail) -> () {
         self.events.push(event);
     }
-    fn events(&self) -> Vec<Event> {
+    fn events(&self) -> Vec<EventDetail> {
         self.events.clone()
     }
 }
@@ -93,7 +93,7 @@ impl Parser for Individual {
                     | "IMMI" | "NATU" | "ORDN" | "RETI" | "RESI" | "PROB" | "WILL" | "EVEN"
                     | "MARR" => {
                         let tag_clone = tag.clone();
-                        self.add_event(Event::new(tokenizer, level + 1, tag_clone.as_str()));
+                        self.add_event(EventDetail::new(tokenizer, level + 1, tag_clone.as_str()));
                     }
                     "FAMC" | "FAMS" => {
                         let tag_clone = tag.clone();
@@ -140,16 +140,12 @@ pub enum GenderType {
     Unknown,
 }
 
-impl GenderType {
-    pub fn get_str(&self) -> &str {
-        match self {
-            GenderType::Male => "M",
-            GenderType::Female => "F",
-            GenderType::Nonbinary => "X",
-            GenderType::Unknown => "U",
-        }
+impl ToString for GenderType {
+    fn to_string(&self) -> String {
+        format!("{:?}", self)
     }
 }
+
 
 /// Gender (tag: SEX); This can describe an individual’s reproductive or sexual anatomy at birth.
 /// Related concepts of gender identity or sexual preference are not currently given their own tag.
@@ -178,7 +174,7 @@ impl GenderType {
 /// let data = doc.parse_document();
 ///
 /// let sex = data.individuals[0].sex.as_ref().unwrap();
-/// assert_eq!(sex.value.get_str(), "M");
+/// assert_eq!(sex.value.to_string(), "Male");
 /// assert_eq!(sex.fact.as_ref().unwrap(), "A fact about an individual's gender");
 /// assert_eq!(sex.sources[0].xref, "@CITATION1@");
 /// assert_eq!(sex.sources[0].page.as_ref().unwrap(), "Page: 132");
@@ -273,14 +269,12 @@ pub enum FamilyLinkType {
     Child,
 }
 
-impl FamilyLinkType {
-    pub fn get_str(&self) -> &str {
-        match self {
-            FamilyLinkType::Child => "FAMC",
-            FamilyLinkType::Spouse => "FAMS",
-        }
+impl ToString for FamilyLinkType {
+    fn to_string(&self) -> String {
+        format!("{:?}", self)
     }
 }
+
 
 /// Pedigree is a code used to indicate the child to family relationship for pedigree navigation
 /// purposes. See GEDCOM 5.5 spec, page 57.
@@ -297,16 +291,12 @@ pub enum Pedigree {
     Sealing,
 }
 
-impl Pedigree {
-    pub fn get_str(&self) -> &str {
-        match self {
-            Pedigree::Birth => "birth",
-            Pedigree::Foster => "foster",
-            Pedigree::Adopted => "adopted",
-            Pedigree::Sealing => "sealing",
-        }
+impl ToString for Pedigree {
+    fn to_string(&self) -> String {
+        format!("{:?}", self)
     }
 }
+
 
 /// ChildLinkStatus is a A status code that allows passing on the users opinion of the status of a
 /// child to family link. See GEDCOM 5.5 spec, page 44.
@@ -324,15 +314,12 @@ pub enum ChildLinkStatus {
     Proven,
 }
 
-impl ChildLinkStatus {
-    pub fn get_str(&self) -> &str {
-        match self {
-            ChildLinkStatus::Proven => "proven",
-            ChildLinkStatus::Disproven => "disproven",
-            ChildLinkStatus::Challenged => "challenged",
-        }
+impl ToString for ChildLinkStatus {
+    fn to_string(&self) -> String {
+        format!("{:?}", self)
     }
 }
+
 
 /// AdoptedByWhichParent is a code which shows which parent in the associated family record adopted
 /// this person. See GEDCOM 5.5 spec, page 42.
@@ -347,15 +334,12 @@ pub enum AdoptedByWhichParent {
     Both,
 }
 
-impl AdoptedByWhichParent {
-    pub fn get_str(&self) -> &str {
-        match self {
-            AdoptedByWhichParent::Wife => "WIFE",
-            AdoptedByWhichParent::Husband => "HUSB",
-            AdoptedByWhichParent::Both => "BOTH",
-        }
+impl ToString for AdoptedByWhichParent {
+    fn to_string(&self) -> String {
+        format!("{:?}", self)
     }
 }
+
 
 /// FamilyLink indicates the normal lineage links through the use of pointers from the individual
 /// to a family through either the FAMC tag or the FAMS tag. The FAMC tag provides a pointer to a
@@ -386,10 +370,10 @@ impl AdoptedByWhichParent {
 ///
 /// let famc = data.individuals[0].events[0].child_to_family_link.as_ref().unwrap();
 /// assert_eq!(famc.xref, "@ADOPTIVE_PARENTS@");
-/// assert_eq!(famc.family_link_type.get_str(), "FAMC");
-/// assert_eq!(famc.pedigree_linkage_type.as_ref().unwrap().get_str(), "adopted");
-/// assert_eq!(famc.child_linkage_status.as_ref().unwrap().get_str(), "proven");
-/// assert_eq!(famc.adopted_by.as_ref().unwrap().get_str(), "BOTH");
+/// assert_eq!(famc.family_link_type.to_string(), "Child");
+/// assert_eq!(famc.pedigree_linkage_type.as_ref().unwrap().to_string(), "Adopted");
+/// assert_eq!(famc.child_linkage_status.as_ref().unwrap().to_string(), "Proven");
+/// assert_eq!(famc.adopted_by.as_ref().unwrap().to_string(), "Both");
 /// ```
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]

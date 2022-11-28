@@ -8,7 +8,7 @@
 use serde::{Deserialize, Serialize};
 
 pub mod event;
-pub use event::{Event, EventType};
+pub use event::{EventDetail, Event};
 
 pub mod date;
 pub use date::{ChangeDate, Date};

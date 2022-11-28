@@ -1,7 +1,7 @@
 use crate::{
     Parser,
     tokenizer::{Token, Tokenizer},
-    types::{Date, Event, Note, RepoCitation, UserDefinedData, Xref},
+    types::{Date, EventDetail, Note, RepoCitation, UserDefinedData, Xref},
 };
 
 #[cfg(feature = "json")]
@@ -56,7 +56,7 @@ impl Parser for Source {
                     "DATA" => tokenizer.next_token(),
                     "EVEN" => {
                         let events_recorded = tokenizer.take_line_value();
-                        let mut event = Event::new(tokenizer, level + 2, "OTHER");
+                        let mut event = EventDetail::new(tokenizer, level + 2, "OTHER");
                         event.with_source_data(events_recorded);
                         self.data.add_event(event);
                     }
@@ -77,12 +77,12 @@ impl Parser for Source {
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct SourceData {
-    events: Vec<Event>,
+    events: Vec<EventDetail>,
     pub agency: Option<String>,
 }
 
 impl SourceData {
-    pub fn add_event(&mut self, event: Event) {
+    pub fn add_event(&mut self, event: EventDetail) {
         self.events.push(event);
     }
 }
