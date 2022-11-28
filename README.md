@@ -19,7 +19,7 @@ Later specifications, such as [5.5.2](https://jfcardinal.github.io/GEDCOM-5.5.2/
 
 ## Usage
 
-This crate comes in two parts. The first is a binary called `parse_gedcom`, mostly used for my testing & development. It prints the `GedcomData` object and some stats about the gedcom file passed into it:
+This crate comes in two parts. The first is a binary called `parse_gedcom`, mostly used for my testing & development. It prints the `GedcomData` object and some stats about the GEDCOM file passed into it:
 ```bash
 parse_gedcom ./tests/fixtures/sample.ged
 
@@ -27,6 +27,7 @@ parse_gedcom ./tests/fixtures/sample.ged
 # ----------------------
 # | Gedcom Data Stats: |
 # ----------------------
+#   submissions: 0
 #   submitters: 1
 #   individuals: 3
 #   families: 2
@@ -57,8 +58,6 @@ There are still parts of the specification not yet implemented, and the project 
 Here are some notes about parsed data & tags. Page references are to the [Gedcom 5.5.1 specification](https://edge.fscdn.org/assets/img/documents/ged551-5bac5e57fe88dd37df0e153d9c515335.pdf).
 
 ### Top-level tags
-
-* `SUBMISSION_RECORD` - p.28 - No attempt at handling this is made.
 
 Tags for families (`FAM`), individuals (`IND`), repositories (`REPO`), sources (`SOUR`), and submitters (`SUBM`) are handled. Many of the most common sub-tags for these are handled though some may not yet be parsed. Mileage may vary.
 

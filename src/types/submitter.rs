@@ -1,13 +1,11 @@
 use crate::{
     Parser,
     tokenizer::{Token, Tokenizer},
-    types::{Address, ChangeDate, UserDefinedData, MultimediaLink, Note},
+    types::{Address, ChangeDate, UserDefinedData, MultimediaLink, Note, Xref},
 };
 
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
-
-type Xref = String;
 
 /// The submitter record identifies an individual or organization that contributed information
 /// contained in the GEDCOM transmission. All records in the transmission are assumed to be

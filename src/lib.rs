@@ -31,9 +31,9 @@ use tokenizer::{Token, Tokenizer};
 
 pub mod types;
 use types::{
-    UserDefinedData, Family, Header, Individual, MultimediaRecord, Repository, Source, Submitter,
+    Family, Header, Individual, MultimediaRecord, Repository, Source, SubmissionRecord, Submitter,
+    UserDefinedData,
 };
-
 
 /// The GedcomDocument can convert the token list into a data structure. The order of the Dataset
 /// should be as follows: the HEAD must come first and TRLR must be last, with any RECORDs in
@@ -129,6 +129,8 @@ pub struct GedcomData {
     pub header: Option<Header>,
     /// List of submitters of the facts
     pub submitters: Vec<Submitter>,
+    /// List of submission records 
+    pub submissions: Vec<SubmissionRecord>,
     /// Individuals within the family tree
     pub individuals: Vec<Individual>,
     /// The family units of the tree, representing relationships between individuals
@@ -176,6 +178,11 @@ impl GedcomData {
         self.sources.push(source);
     }
 
+    /// Add a `Submission` to the tree
+    pub fn add_submission(&mut self, submission: SubmissionRecord) {
+        self.submissions.push(submission);
+    }
+
     /// Adds a `Submitter` to the tree
     pub fn add_submitter(&mut self, submitter: Submitter) {
         self.submitters.push(submitter);
@@ -196,6 +203,7 @@ impl GedcomData {
         println!("----------------------");
         println!("| Gedcom Data Stats: |");
         println!("----------------------");
+        println!("  submissions: {}", self.submissions.len());
         println!("  submitters: {}", self.submitters.len());
         println!("  individuals: {}", self.individuals.len());
         println!("  families: {}", self.families.len());
@@ -238,6 +246,7 @@ impl Parser for GedcomData {
                         self.add_repository(Repository::new(tokenizer, current_level, pointer))
                     }
                     "SOUR" => self.add_source(Source::new(tokenizer, current_level, pointer)),
+                    "SUBN" => self.add_submission(SubmissionRecord::new(tokenizer, level, pointer)),
                     "SUBM" => self.add_submitter(Submitter::new(tokenizer, level, pointer)),
                     "OBJE" => self.add_multimedia(MultimediaRecord::new(tokenizer, level, pointer)),
                     "TRLR" => break,
