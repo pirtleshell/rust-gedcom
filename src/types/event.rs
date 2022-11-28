@@ -34,7 +34,6 @@ pub enum Event {
     Naturalization,
     Ordination,
     Probate,
-    Probjate,
     Residence,
     Retired,
     Will,
