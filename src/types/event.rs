@@ -56,7 +56,7 @@ impl ToString for Event {
 /// specification. The event indicated by this general EVEN tag is defined by the value of the
 /// subordinate TYPE tag (event_type). 
 ///
-/// # A Minimal Example
+/// # Example
 ///
 /// ```rust
 /// use gedcom::GedcomDocument;
