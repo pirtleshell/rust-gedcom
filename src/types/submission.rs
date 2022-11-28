@@ -9,11 +9,10 @@ use serde::{Deserialize, Serialize};
 
 /// SubmissionRecord is used by the sending system to send instructions and information to the
 /// receiving system. The sending system uses a submission record to send instructions and
-/// information to the receiving system. TempleReady processes submission records to determine
-/// which temple the cleared records should be directed to. The submission record is also used for
-/// communication between Ancestral File download requests and TempleReady. Each GEDCOM
-/// transmission file should have only one submission record. Multiple submissions are handled by
-/// creating separate GEDCOM transmission files. See GEDCOM 5.5 spec, page 28.
+/// information to the receiving system. The submission record is also used for communication
+/// between Ancestral File download requests and TempleReady. Each GEDCOM transmission file should
+/// have only one submission record. Multiple submissions are handled by creating separate GEDCOM
+/// transmission files. See GEDCOM 5.5 spec, page 28.
 ///
 /// # Example
 ///
