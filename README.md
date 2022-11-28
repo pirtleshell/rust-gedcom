@@ -19,7 +19,7 @@ Later specifications, such as [5.5.2](https://jfcardinal.github.io/GEDCOM-5.5.2/
 
 ## Usage
 
-This crate comes in two parts. The first is a binary called `parse_gedcom`, mostly used for my testing & development. It prints the `GedcomData` object and some stats about the GEDCOM file passed into it:
+This crate comes in two parts. The first is a binary called `parse_gedcom`, mostly used for testing & development. It prints the `GedcomData` object and some stats about the GEDCOM file passed into it:
 ```bash
 parse_gedcom ./tests/fixtures/sample.ged
 
