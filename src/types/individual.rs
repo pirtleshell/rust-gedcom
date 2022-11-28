@@ -1,8 +1,8 @@
 use crate::{
     tokenizer::{Token, Tokenizer},
     types::{
-        event::HasEvents, Date, EventDetail, MultimediaRecord, Note,
-        SourceCitation, UserDefinedData, Xref,
+        event::HasEvents, ChangeDate, Date, EventDetail, MultimediaRecord, Note, SourceCitation,
+        UserDefinedData, Xref,
     },
     Parser,
 };
@@ -24,6 +24,8 @@ pub struct Individual {
     pub events: Vec<EventDetail>,
     pub multimedia: Vec<MultimediaRecord>,
     pub last_updated: Option<String>,
+    pub note: Option<Note>,
+    pub change_date: Option<ChangeDate>,
 }
 
 impl Individual {
@@ -40,6 +42,8 @@ impl Individual {
             last_updated: None,
             source: Vec::new(),
             multimedia: Vec::new(),
+            change_date: None,
+            note: None,
         };
         indi.parse(tokenizer, level);
         indi
@@ -117,18 +121,14 @@ impl Parser for Individual {
                         let tag_clone = tag.clone();
                         self.add_family(FamilyLink::new(tokenizer, level + 1, tag_clone.as_str()));
                     }
-                    "CHAN" => {
-                        // assuming it always only has a single DATE subtag
-                        tokenizer.next_token(); // level
-                        tokenizer.next_token(); // DATE tag
-                        self.last_updated = Some(tokenizer.take_line_value());
-                    }
+                    "CHAN" => self.change_date = Some(ChangeDate::new(tokenizer, level + 1)),
                     "SOUR" => {
                         self.add_source_citation(SourceCitation::new(tokenizer, level + 1));
                     }
                     "OBJE" => {
                         self.add_multimedia(MultimediaRecord::new(tokenizer, level + 1, None))
                     }
+                    "NOTE" => self.note = Some(Note::new(tokenizer, level + 1)),
                     _ => panic!("{} Unhandled Individual Tag: {}", tokenizer.debug(), tag),
                 },
                 Token::CustomTag(tag) => {
@@ -466,6 +466,7 @@ impl Parser for FamilyLink {
                 Token::Tag(tag) => match tag.as_str() {
                     "PEDI" => self.set_pedigree(tokenizer.take_line_value().as_str()),
                     "STAT" => self.set_child_linkage_status(&tokenizer.take_line_value().as_str()),
+                    "NOTE" => self.note = Some(Note::new(tokenizer, level + 1)),
                     "ADOP" => {
                         self.set_adopted_by_which_parent(&tokenizer.take_line_value().as_str())
                     }
