@@ -22,14 +22,14 @@ use serde::{Deserialize, Serialize};
 ///    0 HEAD\n\
 ///    1 GEDC\n\
 ///    2 VERS 5.5\n\
-///    0 @SUBMISSION@ SUBN
-///    1 _MYOWNTAG SUBN does not allow NOTE tags :-(( so, here is my not: SUBN seems to be LDS internal data. The sample data I put in here are probably nonsence.
-///    1 SUBM @SUBMITTER@
-///    1 FAMF NameOfFamilyFile
-///    1 TEMP Abreviated temple code
-///    1 ANCE 1
-///    1 DESC 1
-///    1 ORDI yes
+///    0 @SUBMISSION@ SUBN\n\
+///    1 _MYOWNTAG SUBN does not allow NOTE tags :-(( so, here is my not: SUBN seems to be LDS internal data. The sample data I put in here are probably nonsence.\n\
+///    1 SUBM @SUBMITTER@\n\
+///    1 FAMF NameOfFamilyFile\n\
+///    1 TEMP Abreviated temple code\n\
+///    1 ANCE 1\n\
+///    1 DESC 1\n\
+///    1 ORDI yes\n\
 ///    0 TRLR";
 ///
 /// let mut doc = GedcomDocument::new(sample.chars());
