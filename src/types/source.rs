@@ -1,6 +1,8 @@
 use crate::{
     tokenizer::{Token, Tokenizer},
-    types::{Date, EventDetail, Note, RepoCitation, UserDefinedData, Xref},
+    types::{
+        ChangeDate, Date, EventDetail, MultimediaRecord, Note, RepoCitation, UserDefinedData, Xref,
+    },
     Parser,
 };
 
@@ -15,7 +17,14 @@ pub struct Source {
     pub data: SourceData,
     pub abbreviation: Option<String>,
     pub title: Option<String>,
-    repo_citations: Vec<RepoCitation>,
+    pub author: Option<String>,
+    pub publication_facts: Option<String>,
+    pub citation_from_source: Option<String>,
+    pub date: Option<Box<ChangeDate>>,
+    pub multimedia: Vec<MultimediaRecord>,
+    pub notes: Vec<Note>,
+    pub repo_citations: Vec<RepoCitation>,
+    pub custom_data: Vec<UserDefinedData>,
 }
 
 impl Source {
@@ -29,10 +38,29 @@ impl Source {
             },
             abbreviation: None,
             title: None,
+            date: None,
+            author: None,
+            publication_facts: None,
+            citation_from_source: None,
+            multimedia: Vec::new(),
+            notes: Vec::new(),
             repo_citations: Vec::new(),
+            custom_data: Vec::new(),
         };
         sour.parse(tokenizer, level);
         sour
+    }
+
+    pub fn add_custom_data(&mut self, data: UserDefinedData) {
+        self.custom_data.push(data);
+    }
+
+    pub fn add_multimedia(&mut self, media: MultimediaRecord) {
+        self.multimedia.push(media);
+    }
+
+    pub fn add_note(&mut self, note: Note) {
+        self.notes.push(note);
     }
 
     pub fn add_repo_citation(&mut self, citation: RepoCitation) {
@@ -51,6 +79,13 @@ impl Parser for Source {
                     break;
                 }
             }
+
+            let mut pointer: Option<String> = None;
+            if let Token::Pointer(xref) = &tokenizer.current_token {
+                pointer = Some(xref.to_string());
+                tokenizer.next_token();
+            }
+
             match &tokenizer.current_token {
                 Token::Tag(tag) => match tag.as_str() {
                     "DATA" => tokenizer.next_token(),
@@ -62,10 +97,26 @@ impl Parser for Source {
                     }
                     "AGNC" => self.data.agency = Some(tokenizer.take_line_value()),
                     "ABBR" => self.abbreviation = Some(tokenizer.take_continued_text(level + 1)),
+                    "CHAN" => self.date = Some(Box::new(ChangeDate::new(tokenizer, level + 1))),
                     "TITL" => self.title = Some(tokenizer.take_continued_text(level + 1)),
+                    "AUTH" => self.author = Some(tokenizer.take_continued_text(level + 1)),
+                    "PUBL" => {
+                        self.publication_facts = Some(tokenizer.take_continued_text(level + 1))
+                    }
+                    "TEXT" => {
+                        self.citation_from_source = Some(tokenizer.take_continued_text(level + 1))
+                    }
+                    "OBJE" => {
+                        self.add_multimedia(MultimediaRecord::new(tokenizer, level + 1, pointer))
+                    }
+                    "NOTE" => self.add_note(Note::new(tokenizer, level + 1)),
                     "REPO" => self.add_repo_citation(RepoCitation::new(tokenizer, level + 1)),
                     _ => panic!("{} Unhandled Source Tag: {}", tokenizer.debug(), tag),
                 },
+                Token::CustomTag(tag) => {
+                    let tag_clone = tag.clone();
+                    self.add_custom_data(tokenizer.parse_custom_tag(tag_clone));
+                }
                 Token::Level(_) => tokenizer.next_token(),
                 _ => panic!("Unhandled Source Token: {:?}", tokenizer.current_token),
             }

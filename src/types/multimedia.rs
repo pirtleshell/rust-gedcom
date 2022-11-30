@@ -44,7 +44,7 @@ use crate::{
 /// let rin = obje.automated_record_id.as_ref().unwrap();
 /// assert_eq!(rin, "Automated Id");
 /// ```
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct MultimediaRecord {
     /// Optional reference to link to this submitter
@@ -240,7 +240,7 @@ impl Parser for MultimediaLink {
 /// assert_eq!(form.value.as_ref().unwrap(), "bmp");
 /// assert_eq!(form.source_media_type.as_ref().unwrap(), "photo");
 /// ```
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct MultimediaFileRefn {
     pub value: Option<String>,
@@ -318,7 +318,7 @@ impl Parser for MultimediaFileRefn {
 /// assert_eq!(form.value.as_ref().unwrap(), "bmp");
 /// assert_eq!(form.source_media_type.as_ref().unwrap(), "photo");
 /// ```
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct MultimediaFormat {
     pub value: Option<String>,
@@ -395,6 +395,7 @@ impl Parser for MultimediaFormat {
 ///     "User Reference Type"
 /// );
 /// ```
+#[derive(Clone)]
 pub struct UserReferenceNumber {
     /// line value
     pub value: Option<String>,

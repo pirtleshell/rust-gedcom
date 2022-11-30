@@ -380,7 +380,7 @@ impl ToString for AdoptedByWhichParent {
 /// let mut doc = GedcomDocument::new(sample.chars());
 /// let data = doc.parse_document();
 ///
-/// let famc = data.individuals[0].events[0].child_to_family_link.as_ref().unwrap();
+/// let famc = data.individuals[0].events[0].family_link.as_ref().unwrap();
 /// assert_eq!(famc.xref, "@ADOPTIVE_PARENTS@");
 /// assert_eq!(famc.family_link_type.to_string(), "Child");
 /// assert_eq!(famc.pedigree_linkage_type.as_ref().unwrap().to_string(), "Adopted");

@@ -128,7 +128,7 @@ impl Parser for Date {
 /// let chan_note = chan.note.as_ref().unwrap();
 /// assert_eq!(chan_note.value.as_ref().unwrap(), "A note");
 /// ```
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct ChangeDate {
     pub value: Option<String>,

@@ -14,6 +14,7 @@ use std::{fmt, string::ToString};
 pub enum Event {
     Adoption,
     AdultChristening,
+    Annulment,
     Baptism,
     BarMitzvah,
     BasMitzvah,
@@ -25,12 +26,19 @@ pub enum Event {
     Confirmation,
     Cremation,
     Death,
+    Divorce,
+    DivorceFiled,
     Emigration,
+    Engagement,
     Event,
     FirstCommunion,
     Graduation,
     Immigration,
     Marriage,
+    MarriageBann,
+    MarriageContract,
+    MarriageLicense,
+    MarriageSettlement,
     Naturalization,
     Ordination,
     Probate,
@@ -54,7 +62,7 @@ impl ToString for Event {
 /// over a period of time, then it is probably not an event, but rather an attribute or fact. The
 /// EVEN tag in this structure is for recording general events that are not specified in the
 /// specification. The event indicated by this general EVEN tag is defined by the value of the
-/// subordinate TYPE tag (event_type). 
+/// subordinate TYPE tag (event_type).
 ///
 /// # Example
 ///
@@ -98,7 +106,8 @@ pub struct EventDetail {
     pub date: Option<Date>,
     pub place: Option<String>,
     pub note: Option<Note>,
-    pub child_to_family_link: Option<FamilyLink>,
+    pub family_link: Option<FamilyLink>,
+    pub family_event_details: Vec<FamilyEventDetail>,
     /// event_type handles the TYPE tag, a descriptive word or phrase used to further classify the
     /// parent event or attribute tag. This should be used whenever either of the generic EVEN or
     /// FACT tags are used. T. See GEDCOM 5.5 spec, page 35 and 49.
@@ -115,7 +124,8 @@ impl EventDetail {
             date: None,
             place: None,
             note: None,
-            child_to_family_link: None,
+            family_link: None,
+            family_event_details: Vec::new(),
             event_type: None,
             citations: Vec::new(),
         };
@@ -131,6 +141,7 @@ impl EventDetail {
     pub fn from_tag(tag: &str) -> Event {
         match tag {
             "ADOP" => Event::Adoption,
+            "ANUL" => Event::Annulment,
             "BAPM" => Event::Baptism,
             "BARM" => Event::BarMitzvah,
             "BASM" => Event::BasMitzvah,
@@ -143,25 +154,36 @@ impl EventDetail {
             "CONF" => Event::Confirmation,
             "CREM" => Event::Cremation,
             "DEAT" => Event::Death,
+            "DIV" => Event::Divorce,
+            "DIVF" => Event::DivorceFiled,
             "EMIG" => Event::Emigration,
+            "ENGA" => Event::Engagement,
             "EVEN" => Event::Event,
             "FCOM" => Event::FirstCommunion,
             "GRAD" => Event::Graduation,
             "IMMI" => Event::Immigration,
+            "MARB" => Event::MarriageBann,
+            "MARC" => Event::MarriageContract,
+            "MARL" => Event::MarriageLicense,
             "MARR" => Event::Marriage,
+            "MARS" => Event::MarriageSettlement,
             "NATU" => Event::Naturalization,
             "ORDN" => Event::Ordination,
+            "OTHER" => Event::Other,
             "PROB" => Event::Probate,
             "RESI" => Event::Residence,
             "RETI" => Event::Retired,
             "WILL" => Event::Will,
-            "OTHER" => Event::Other,
             _ => panic!("Unrecognized EventType tag: {}", tag),
         }
     }
 
     pub fn add_citation(&mut self, citation: SourceCitation) {
         self.citations.push(citation)
+    }
+
+    pub fn add_family_event_detail(&mut self, detail: FamilyEventDetail) {
+      self.family_event_details.push(detail);
     }
 
     #[must_use]
@@ -232,8 +254,12 @@ impl Parser for EventDetail {
                     "SOUR" => self.add_citation(SourceCitation::new(tokenizer, level + 1)),
                     "FAMC" => {
                         let tag_clone = tag.clone();
-                        self.child_to_family_link =
+                        self.family_link =
                             Some(FamilyLink::new(tokenizer, level + 1, tag_clone.as_str()))
+                    }
+                    "HUSB" | "WIFE" => {
+                      let tag_clone = tag.clone();
+                      self.add_family_event_detail(FamilyEventDetail::new(tokenizer, level + 1, tag_clone.as_str()));
                     }
                     "NOTE" => self.note = Some(Note::new(tokenizer, level + 1)),
                     "TYPE" => self.event_type = Some(tokenizer.take_line_value()),
@@ -246,6 +272,116 @@ impl Parser for EventDetail {
 
         if &value != "" {
             self.value = Some(value);
+        }
+    }
+}
+
+/// Spouse in a family that experiences an event.
+#[derive(Clone, Debug)]
+pub enum Spouse {
+    Spouse1,
+    Spouse2,
+}
+
+impl ToString for Spouse {
+    fn to_string(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+/// FamilyEventDetail defines an additional dataset found in certain events.
+///
+/// # Example
+///
+/// ```rust
+/// use gedcom::GedcomDocument;
+/// let sample = "\
+///    0 HEAD\n\
+///    1 GEDC\n\
+///    2 VERS 5.5\n\
+///    0 @FAMILY1@ FAM
+///    1 ANUL
+///    2 DATE 31 DEC 1997
+///    2 PLAC The place
+///    2 SOUR @SOURCE1@
+///    3 PAGE 42
+///    3 DATA
+///    4 DATE 31 DEC 1900
+///    4 TEXT a sample text
+///    5 CONT Sample text continued here. The word TE
+///    5 CONC ST should not be broken!
+///    3 QUAY 3
+///    3 NOTE A note
+///    4 CONT Note continued here. The word TE
+///    4 CONC ST should not be broken!
+///    2 NOTE ANNULMENT event note (declaring a marriage void from the beginning (never existed))
+///    3 CONT Note continued here. The word TE
+///    3 CONC ST should not be broken!
+///    2 HUSB
+///    3 AGE 42y
+///    2 WIFE
+///    3 AGE 42y 6m
+///    0 TRLR";
+///
+/// let mut doc = GedcomDocument::new(sample.chars());
+/// let data = doc.parse_document();
+///
+/// let anul = &data.families[0].events;
+/// assert_eq!(anul.len(), 1);
+///
+/// ```
+#[derive(Clone)]
+pub struct FamilyEventDetail {
+    pub member: Spouse,
+    pub age: Option<String>,
+}
+
+impl FamilyEventDetail {
+    #[must_use]
+    pub fn new(tokenizer: &mut Tokenizer, level: u8, tag: &str) -> FamilyEventDetail {
+        let mut fe = FamilyEventDetail {
+            member: Self::from_tag(tag),
+            age: None,
+        };
+        fe.parse(tokenizer, level);
+        fe
+    }
+
+    pub fn from_tag(tag: &str) -> Spouse {
+        match tag {
+            "HUSB" => Spouse::Spouse1,
+            "WIFE" => Spouse::Spouse2,
+            _ => panic!("{:?}, Unrecognized FamilyEventMember", tag),
+        }
+    }
+}
+
+impl Parser for FamilyEventDetail {
+    fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
+        tokenizer.next_token();
+        loop {
+            if let Token::Level(cur_level) = tokenizer.current_token {
+                if cur_level <= level {
+                    break;
+                }
+            }
+            tokenizer.next_token();
+            match &tokenizer.current_token {
+                Token::Tag(tag) => match tag.as_str() {
+                    "AGE" => self.age = Some(tokenizer.take_line_value()),
+                    _ => panic!(
+                        "{}, Unrecognized FamilyEventDetail tag: {}",
+                        tokenizer.debug(),
+                        tag
+                    ),
+                },
+                Token::Level(_) => tokenizer.next_token(),
+                _ => panic!(
+                    "{} Unrecognized FamilyEventDetail: {:?}",
+                    tokenizer.debug(),
+                    tokenizer.current_token
+                ),
+            }
         }
     }
 }
