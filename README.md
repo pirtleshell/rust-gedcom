@@ -53,7 +53,7 @@ gedcom = { version = "<version>", features = ["json"] }
 
 ## 🚧 Progress 🚧
 
-There are still parts of the specification not yet implemented, and the project is subject to change. The way development has been happening is by taking a GEDCOM file, attempting to parse it and acting on whatever errors or omissions occur. In its current state, it is capable of parsing the [sample.ged](tests/fixtures/sample.ged) in its entirety.
+There are still parts of the specification not yet implemented, and the project is subject to change. The way development has been happening is by taking a GEDCOM file, attempting to parse it and acting on whatever errors or omissions occur. In its current state, it is capable of parsing the [Heiner Eichmann's](http://heiner-eichmann.de/gedcom/allged.htm) [`allged.ged`](tests/fixtures/allged.ged) in its entirety.
 
 Here are some notes about parsed data & tags. Page references are to the [Gedcom 5.5.1 specification](https://edge.fscdn.org/assets/img/documents/ged551-5bac5e57fe88dd37df0e153d9c515335.pdf).
 
