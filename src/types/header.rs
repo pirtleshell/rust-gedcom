@@ -1,7 +1,8 @@
 use crate::{
-    Parser,
-    tokenizer::{Token, Tokenizer},
+    parse_subset,
+    tokenizer::Tokenizer,
     types::{Corporation, Date, Note},
+    Parser,
 };
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
@@ -87,46 +88,31 @@ impl Header {
         header.parse(tokenizer, level);
         header
     }
-
-    pub fn add_custom_data(&mut self, data: UserDefinedData) {
-        self.custom_data.push(data)
-    }
 }
 
 impl Parser for Header {
     /// Parses HEAD top-level tag. See
     /// https://gedcom.io/specifications/FamilySearchGEDCOMv7.html#HEADER
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
-        // let mut head = Header::default();
-
         // skip over HEAD tag name
         tokenizer.next_token();
 
-        while tokenizer.current_token != Token::Level(level) {
-            match &tokenizer.current_token {
-                Token::Tag(tag) => match tag.as_str() {
-                    "GEDC" => self.gedcom = Some(GedcomMeta::new(tokenizer, level + 1)),
-                    "SOUR" => self.source = Some(HeadSour::new(tokenizer, level + 1)),
-                    "DEST" => self.destination = Some(tokenizer.take_line_value()),
-                    "DATE" => self.date = Some(Date::new(tokenizer, level + 1)),
-                    "SUBM" => self.submitter_tag = Some(tokenizer.take_line_value()),
-                    "SUBN" => self.submission_tag = Some(tokenizer.take_line_value()),
-                    "FILE" => self.filename = Some(tokenizer.take_line_value()),
-                    "COPR" => self.copyright = Some(tokenizer.take_continued_text(level + 1)),
-                    "CHAR" => self.encoding = Some(Encoding::new(tokenizer, level + 1)),
-                    "LANG" => self.language = Some(tokenizer.take_line_value()),
-                    "NOTE" => self.note = Some(Note::new(tokenizer, level + 1)),
-                    "PLAC" => self.place = Some(HeadPlac::new(tokenizer, level + 1)),
-                    _ => panic!("{} Unhandled Header Tag: {}", tokenizer.debug(), tag),
-                },
-                Token::CustomTag(tag) => {
-                    let tag_clone = tag.clone();
-                    self.add_custom_data(tokenizer.parse_custom_tag(tag_clone))
-                }
-                Token::Level(_) => tokenizer.next_token(),
-                _ => panic!("Unhandled Header Token: {:?}", &tokenizer.current_token),
-            }
-        }
+        let handle_subset = |tag: &str, tokenizer: &mut Tokenizer| match tag {
+            "GEDC" => self.gedcom = Some(GedcomMeta::new(tokenizer, level + 1)),
+            "SOUR" => self.source = Some(HeadSour::new(tokenizer, level + 1)),
+            "DEST" => self.destination = Some(tokenizer.take_line_value()),
+            "DATE" => self.date = Some(Date::new(tokenizer, level + 1)),
+            "SUBM" => self.submitter_tag = Some(tokenizer.take_line_value()),
+            "SUBN" => self.submission_tag = Some(tokenizer.take_line_value()),
+            "FILE" => self.filename = Some(tokenizer.take_line_value()),
+            "COPR" => self.copyright = Some(tokenizer.take_continued_text(level + 1)),
+            "CHAR" => self.encoding = Some(Encoding::new(tokenizer, level + 1)),
+            "LANG" => self.language = Some(tokenizer.take_line_value()),
+            "NOTE" => self.note = Some(Note::new(tokenizer, level + 1)),
+            "PLAC" => self.place = Some(HeadPlac::new(tokenizer, level + 1)),
+            _ => panic!("{} Unhandled Header Tag: {}", tokenizer.debug(), tag),
+        };
+        self.custom_data = parse_subset(tokenizer, level, handle_subset);
     }
 }
 
@@ -176,36 +162,22 @@ impl Parser for GedcomMeta {
         // skip GEDC tag
         tokenizer.next_token();
 
-        loop {
-            if let Token::Level(cur_level) = tokenizer.current_token {
-                if cur_level <= level {
-                    break;
+        let handle_subset = |tag: &str, tokenizer: &mut Tokenizer| match tag {
+            "VERS" => self.version = Some(tokenizer.take_line_value()),
+            // this is the only value that makes sense. warn them otherwise.
+            "FORM" => {
+                let form = tokenizer.take_line_value();
+                if &form.to_uppercase() != "LINEAGE-LINKED" {
+                    println!(
+                        "WARNING: Unrecognized GEDCOM form. Expected LINEAGE-LINKED, found {}",
+                        form
+                    );
                 }
+                self.form = Some(form);
             }
-
-            match &tokenizer.current_token {
-                Token::Tag(tag) => match tag.as_str() {
-                    "VERS" => self.version = Some(tokenizer.take_line_value()),
-                    // this is the only value that makes sense. warn them otherwise.
-                    "FORM" => {
-                        let form = tokenizer.take_line_value();
-                        if &form.to_uppercase() != "LINEAGE-LINKED" {
-                            println!(
-                                "WARNING: Unrecognized GEDCOM form. Expected LINEAGE-LINKED, found {}"
-                            , form);
-                        }
-                        self.form = Some(form);
-                    }
-                    _ => panic!("{} Unhandled GEDC Tag: {}", tokenizer.debug(), tag),
-                },
-                Token::Level(_) => tokenizer.next_token(),
-                _ => panic!(
-                    "{} Unexpected GEDC Token: {:?}",
-                    tokenizer.debug(),
-                    &tokenizer.current_token
-                ),
-            }
-        }
+            _ => panic!("{} Unhandled GEDC Tag: {}", tokenizer.debug(), tag),
+        };
+        parse_subset(tokenizer, level, handle_subset);
     }
 }
 
@@ -256,25 +228,11 @@ impl Parser for Encoding {
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         self.value = Some(tokenizer.take_line_value());
 
-        loop {
-            if let Token::Level(cur_level) = tokenizer.current_token {
-                if cur_level <= level {
-                    break;
-                }
-            }
-            match &tokenizer.current_token {
-                Token::Tag(tag) => match tag.as_str() {
-                    "VERS" => self.version = Some(tokenizer.take_line_value()),
-                    _ => panic!("{} Unhandled CHAR Tag: {}", tokenizer.debug(), tag),
-                },
-                Token::Level(_) => tokenizer.next_token(),
-                _ => panic!(
-                    "{} Unexpected CHAR Token: {:?}",
-                    tokenizer.debug(),
-                    &tokenizer.current_token
-                ),
-            }
-        }
+        let handle_subset = |tag: &str, tokenizer: &mut Tokenizer| match tag {
+            "VERS" => self.version = Some(tokenizer.take_line_value()),
+            _ => panic!("{} Unhandled CHAR Tag: {}", tokenizer.debug(), tag),
+        };
+        parse_subset(tokenizer, level, handle_subset);
     }
 }
 
@@ -336,24 +294,14 @@ impl Parser for HeadSour {
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         self.value = Some(tokenizer.take_line_value());
 
-        loop {
-            if let Token::Level(cur_level) = tokenizer.current_token {
-                if cur_level <= level {
-                    break;
-                }
-            }
-            match &tokenizer.current_token {
-                Token::Tag(tag) => match tag.as_str() {
-                    "VERS" => self.version = Some(tokenizer.take_line_value()),
-                    "NAME" => self.name = Some(tokenizer.take_line_value()),
-                    "CORP" => self.corporation = Some(Corporation::new(tokenizer, level + 1)),
-                    "DATA" => self.data = Some(HeadSourData::new(tokenizer, level + 1)),
-                    _ => panic!("{} Unhandled CHAR Tag: {}", tokenizer.debug(), tag),
-                },
-                Token::Level(_) => tokenizer.next_token(),
-                _ => panic!("Unexpected SOUR Token: {:?}", tokenizer.current_token),
-            }
-        }
+        let handle_subset = |tag: &str, tokenizer: &mut Tokenizer| match tag {
+            "VERS" => self.version = Some(tokenizer.take_line_value()),
+            "NAME" => self.name = Some(tokenizer.take_line_value()),
+            "CORP" => self.corporation = Some(Corporation::new(tokenizer, level + 1)),
+            "DATA" => self.data = Some(HeadSourData::new(tokenizer, level + 1)),
+            _ => panic!("{} Unhandled CHAR Tag: {}", tokenizer.debug(), tag),
+        };
+        parse_subset(tokenizer, level, handle_subset);
     }
 }
 
@@ -413,29 +361,16 @@ impl Parser for HeadSourData {
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         self.value = Some(tokenizer.take_line_value());
 
-        loop {
-            if let Token::Level(cur_level) = tokenizer.current_token {
-                if cur_level <= level {
-                    break;
-                }
-            }
-            match &tokenizer.current_token {
-                Token::Tag(tag) => match tag.as_str() {
-                    "DATE" => self.date = Some(Date::new(tokenizer, level + 1)),
-                    "COPR" => self.copyright = Some(tokenizer.take_continued_text(level+1)),
-                    _ => panic!(
-                        "{} unhandled DATA tag in header: {}",
-                        tokenizer.debug(),
-                        tag
-                    ),
-                },
-                Token::Level(_) => tokenizer.next_token(),
-                _ => panic!(
-                    "Unhandled SOUR tag in header: {:?}",
-                    tokenizer.current_token
-                ),
-            }
-        }
+        let handle_subset = |tag: &str, tokenizer: &mut Tokenizer| match tag {
+            "DATE" => self.date = Some(Date::new(tokenizer, level + 1)),
+            "COPR" => self.copyright = Some(tokenizer.take_continued_text(level + 1)),
+            _ => panic!(
+                "{} unhandled DATA tag in header: {}",
+                tokenizer.debug(),
+                tag
+            ),
+        };
+        parse_subset(tokenizer, level, handle_subset);
     }
 }
 
@@ -504,35 +439,23 @@ impl Parser for HeadPlac {
         // In the header, PLAC should have no payload. See
         // https://gedcom.io/specifications/FamilySearchGEDCOMv7.html#HEAD-PLAC
         tokenizer.next_token();
-        loop {
-            if let Token::Level(cur_level) = tokenizer.current_token {
-                if cur_level <= level {
-                    break;
+
+        let handle_subset = |tag: &str, tokenizer: &mut Tokenizer| match tag {
+            "FORM" => {
+                let form = tokenizer.take_line_value();
+                let jurisdictional_titles = form.split(",");
+
+                for t in jurisdictional_titles {
+                    let v = t.trim();
+                    self.push_jurisdictional_title(v.to_string());
                 }
             }
-            match &tokenizer.current_token {
-                Token::Tag(tag) => match tag.as_str() {
-                    "FORM" => {
-                        let form = tokenizer.take_line_value();
-                        let jurisdictional_titles = form.split(",");
-
-                        for t in jurisdictional_titles {
-                            let v = t.trim();
-                            self.push_jurisdictional_title(v.to_string());
-                        }
-                    }
-                    _ => panic!(
-                        "{} Unhandled PLAC tag in header: {}",
-                        tokenizer.debug(),
-                        tag
-                    ),
-                },
-                Token::Level(_) => tokenizer.next_token(),
-                _ => panic!(
-                    "Unhandled PLAC tag in header: {:?}",
-                    tokenizer.current_token
-                ),
-            }
-        }
+            _ => panic!(
+                "{} Unhandled PLAC tag in header: {}",
+                tokenizer.debug(),
+                tag
+            ),
+        };
+        parse_subset(tokenizer, level, handle_subset);
     }
 }

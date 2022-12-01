@@ -31,7 +31,7 @@ use tokenizer::{Token, Tokenizer};
 
 pub mod types;
 use types::{
-    Family, Header, Individual, MultimediaRecord, Repository, Source, SubmissionRecord, Submitter,
+    Family, Header, Individual, MultimediaRecord, Repository, Source, Submission, Submitter,
     UserDefinedData,
 };
 
@@ -79,6 +79,57 @@ impl<'a> GedcomDocument<'a> {
 pub trait Parser {
     /// parse does the actual parsing of a subset of a token list
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8);
+}
+
+#[must_use]
+/// Helper function for converting GEDCOM file content stream to parsed data.
+pub fn parse_ged(content: std::str::Chars) -> GedcomData {
+    let mut p = GedcomDocument::new(content);
+    p.parse_document()
+}
+
+/// parse_subset is a helper function that handles some boilerplate code involved in implementing
+/// the Parser trait. It returns a Vector of any UserDefinedData.
+pub fn parse_subset<F>(
+    tokenizer: &mut Tokenizer,
+    level: u8,
+    mut tag_handler: F,
+) -> Vec<UserDefinedData>
+where
+    F: FnMut(&str, &mut Tokenizer),
+{
+    let mut custom_data = Vec::new();
+    loop {
+        if let Token::Level(curl_level) = tokenizer.current_token {
+            if curl_level <= level {
+                break;
+            }
+        }
+
+        match &tokenizer.current_token {
+            Token::Tag(tag) => {
+                let tag_clone = tag.clone();
+                tag_handler(tag_clone.as_str(), tokenizer);
+            }
+            Token::CustomTag(tag) => {
+                let tag_clone = tag.clone();
+                custom_data.push(parse_custom_tag(tokenizer, tag_clone));
+            }
+            Token::Level(_) => tokenizer.next_token(),
+            _ => panic!(
+                "{}, Unhandled Token: {:?}",
+                tokenizer.debug(),
+                tokenizer.current_token
+            ),
+        }
+    }
+    custom_data
+}
+
+/// parse_custom_tag handles User Defined Data. See Gedcom 5.5 spec, p.56
+pub fn parse_custom_tag(tokenizer: &mut Tokenizer, tag: String) -> UserDefinedData {
+    let value = tokenizer.take_line_value();
+    UserDefinedData { tag, value }
 }
 
 /// GedcomData is the data structure representing all the data within a gedcom file
@@ -129,8 +180,8 @@ pub struct GedcomData {
     pub header: Option<Header>,
     /// List of submitters of the facts
     pub submitters: Vec<Submitter>,
-    /// List of submission records 
-    pub submissions: Vec<SubmissionRecord>,
+    /// List of submission records
+    pub submissions: Vec<Submission>,
     /// Individuals within the family tree
     pub individuals: Vec<Individual>,
     /// The family units of the tree, representing relationships between individuals
@@ -179,7 +230,7 @@ impl GedcomData {
     }
 
     /// Add a `Submission` to the tree
-    pub fn add_submission(&mut self, submission: SubmissionRecord) {
+    pub fn add_submission(&mut self, submission: Submission) {
         self.submissions.push(submission);
     }
 
@@ -246,7 +297,7 @@ impl Parser for GedcomData {
                         self.add_repository(Repository::new(tokenizer, current_level, pointer))
                     }
                     "SOUR" => self.add_source(Source::new(tokenizer, current_level, pointer)),
-                    "SUBN" => self.add_submission(SubmissionRecord::new(tokenizer, level, pointer)),
+                    "SUBN" => self.add_submission(Submission::new(tokenizer, level, pointer)),
                     "SUBM" => self.add_submitter(Submitter::new(tokenizer, level, pointer)),
                     "OBJE" => self.add_multimedia(MultimediaRecord::new(tokenizer, level, pointer)),
                     "TRLR" => break,
@@ -257,7 +308,7 @@ impl Parser for GedcomData {
                 };
             } else if let Token::CustomTag(tag) = &tokenizer.current_token {
                 let tag_clone = tag.clone();
-                self.add_custom_data(tokenizer.parse_custom_tag(tag_clone));
+                self.add_custom_data(parse_custom_tag(tokenizer, tag_clone));
                 while tokenizer.current_token != Token::Level(level) {
                     tokenizer.next_token();
                 }
@@ -271,11 +322,4 @@ impl Parser for GedcomData {
             };
         }
     }
-}
-
-#[must_use]
-/// Helper function for converting GEDCOM file content stream to parsed data.
-pub fn parse_ged(content: std::str::Chars) -> GedcomData {
-    let mut p = GedcomDocument::new(content);
-    p.parse_document()
 }

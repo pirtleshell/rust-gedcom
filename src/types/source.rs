@@ -1,4 +1,5 @@
 use crate::{
+    parse_subset,
     tokenizer::{Token, Tokenizer},
     types::{
         ChangeDate, Date, EventDetail, MultimediaRecord, Note, RepoCitation, UserDefinedData, Xref,
@@ -10,7 +11,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 
 /// Source for genealogy facts
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct Source {
     pub xref: Option<String>,
@@ -20,7 +21,7 @@ pub struct Source {
     pub author: Option<String>,
     pub publication_facts: Option<String>,
     pub citation_from_source: Option<String>,
-    pub date: Option<Box<ChangeDate>>,
+    pub change_date: Option<Box<ChangeDate>>,
     pub multimedia: Vec<MultimediaRecord>,
     pub notes: Vec<Note>,
     pub repo_citations: Vec<RepoCitation>,
@@ -30,29 +31,10 @@ pub struct Source {
 impl Source {
     #[must_use]
     pub fn new(tokenizer: &mut Tokenizer, level: u8, xref: Option<String>) -> Source {
-        let mut sour = Source {
-            xref,
-            data: SourceData {
-                events: Vec::new(),
-                agency: None,
-            },
-            abbreviation: None,
-            title: None,
-            date: None,
-            author: None,
-            publication_facts: None,
-            citation_from_source: None,
-            multimedia: Vec::new(),
-            notes: Vec::new(),
-            repo_citations: Vec::new(),
-            custom_data: Vec::new(),
-        };
+        let mut sour = Source::default();
+        sour.xref = xref;
         sour.parse(tokenizer, level);
         sour
-    }
-
-    pub fn add_custom_data(&mut self, data: UserDefinedData) {
-        self.custom_data.push(data);
     }
 
     pub fn add_multimedia(&mut self, media: MultimediaRecord) {
@@ -73,59 +55,41 @@ impl Parser for Source {
         // skip SOUR tag
         tokenizer.next_token();
 
-        loop {
-            if let Token::Level(cur_level) = tokenizer.current_token {
-                if cur_level <= level {
-                    break;
-                }
-            }
-
+        let handle_subset = |tag: &str, tokenizer: &mut Tokenizer| {
             let mut pointer: Option<String> = None;
             if let Token::Pointer(xref) = &tokenizer.current_token {
                 pointer = Some(xref.to_string());
                 tokenizer.next_token();
             }
-
-            match &tokenizer.current_token {
-                Token::Tag(tag) => match tag.as_str() {
-                    "DATA" => tokenizer.next_token(),
-                    "EVEN" => {
-                        let events_recorded = tokenizer.take_line_value();
-                        let mut event = EventDetail::new(tokenizer, level + 2, "OTHER");
-                        event.with_source_data(events_recorded);
-                        self.data.add_event(event);
-                    }
-                    "AGNC" => self.data.agency = Some(tokenizer.take_line_value()),
-                    "ABBR" => self.abbreviation = Some(tokenizer.take_continued_text(level + 1)),
-                    "CHAN" => self.date = Some(Box::new(ChangeDate::new(tokenizer, level + 1))),
-                    "TITL" => self.title = Some(tokenizer.take_continued_text(level + 1)),
-                    "AUTH" => self.author = Some(tokenizer.take_continued_text(level + 1)),
-                    "PUBL" => {
-                        self.publication_facts = Some(tokenizer.take_continued_text(level + 1))
-                    }
-                    "TEXT" => {
-                        self.citation_from_source = Some(tokenizer.take_continued_text(level + 1))
-                    }
-                    "OBJE" => {
-                        self.add_multimedia(MultimediaRecord::new(tokenizer, level + 1, pointer))
-                    }
-                    "NOTE" => self.add_note(Note::new(tokenizer, level + 1)),
-                    "REPO" => self.add_repo_citation(RepoCitation::new(tokenizer, level + 1)),
-                    _ => panic!("{} Unhandled Source Tag: {}", tokenizer.debug(), tag),
-                },
-                Token::CustomTag(tag) => {
-                    let tag_clone = tag.clone();
-                    self.add_custom_data(tokenizer.parse_custom_tag(tag_clone));
+            match tag {
+                "DATA" => tokenizer.next_token(),
+                "EVEN" => {
+                    let events_recorded = tokenizer.take_line_value();
+                    let mut event = EventDetail::new(tokenizer, level + 2, "OTHER");
+                    event.with_source_data(events_recorded);
+                    self.data.add_event(event);
                 }
-                Token::Level(_) => tokenizer.next_token(),
-                _ => panic!("Unhandled Source Token: {:?}", tokenizer.current_token),
+                "AGNC" => self.data.agency = Some(tokenizer.take_line_value()),
+                "ABBR" => self.abbreviation = Some(tokenizer.take_continued_text(level + 1)),
+                "CHAN" => self.change_date = Some(Box::new(ChangeDate::new(tokenizer, level + 1))),
+                "TITL" => self.title = Some(tokenizer.take_continued_text(level + 1)),
+                "AUTH" => self.author = Some(tokenizer.take_continued_text(level + 1)),
+                "PUBL" => self.publication_facts = Some(tokenizer.take_continued_text(level + 1)),
+                "TEXT" => {
+                    self.citation_from_source = Some(tokenizer.take_continued_text(level + 1))
+                }
+                "OBJE" => self.add_multimedia(MultimediaRecord::new(tokenizer, level + 1, pointer)),
+                "NOTE" => self.add_note(Note::new(tokenizer, level + 1)),
+                "REPO" => self.add_repo_citation(RepoCitation::new(tokenizer, level + 1)),
+                _ => panic!("{} Unhandled Source Tag: {}", tokenizer.debug(), tag),
             }
-        }
+        };
+        self.custom_data = parse_subset(tokenizer, level, handle_subset);
     }
 }
 
 #[allow(clippy::module_name_repetitions)]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct SourceData {
     events: Vec<EventDetail>,
@@ -188,44 +152,26 @@ impl SourceCitation {
         citation.parse(tokenizer, level);
         citation
     }
-
-    pub fn add_custom_data(&mut self, data: UserDefinedData) {
-        self.custom_data.push(data)
-    }
 }
 
 impl Parser for SourceCitation {
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
-        loop {
-            if let Token::Level(cur_level) = tokenizer.current_token {
-                if cur_level <= level {
-                    break;
-                }
-            }
+        tokenizer.next_token();
 
-            match &tokenizer.current_token {
-                Token::Tag(tag) => match tag.as_str() {
-                    "PAGE" => self.page = Some(tokenizer.take_continued_text(level + 1)),
-                    "DATA" => self.data = Some(SourceCitationData::new(tokenizer, level + 1)),
-                    "NOTE" => self.note = Some(Note::new(tokenizer, level + 1)),
-                    "QUAY" => {
-                        self.certainty_assessment =
-                            Some(CertaintyAssessment::new(tokenizer, level + 1))
-                    }
-                    _ => panic!(
-                        "{} Unhandled SourceCitation Tag: {}",
-                        tokenizer.debug(),
-                        tag
-                    ),
-                },
-                Token::CustomTag(tag) => {
-                    let tag_clone = tag.clone();
-                    self.add_custom_data(tokenizer.parse_custom_tag(tag_clone))
-                }
-                Token::Level(_) => tokenizer.next_token(),
-                _ => panic!("Unhandled Citation Token: {:?}", tokenizer.current_token),
+        let handle_subset = |tag: &str, tokenizer: &mut Tokenizer| match tag {
+            "PAGE" => self.page = Some(tokenizer.take_continued_text(level + 1)),
+            "DATA" => self.data = Some(SourceCitationData::new(tokenizer, level + 1)),
+            "NOTE" => self.note = Some(Note::new(tokenizer, level + 1)),
+            "QUAY" => {
+                self.certainty_assessment = Some(CertaintyAssessment::new(tokenizer, level + 1))
             }
-        }
+            _ => panic!(
+                "{} Unhandled SourceCitation Tag: {}",
+                tokenizer.debug(),
+                tag
+            ),
+        };
+        self.custom_data = parse_subset(tokenizer, level, handle_subset);
     }
 }
 
@@ -281,32 +227,16 @@ impl Parser for SourceCitationData {
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         // skip because this DATA tag should have now line value
         tokenizer.next_token();
-        loop {
-            if let Token::Level(cur_level) = tokenizer.current_token {
-                if cur_level <= level {
-                    break;
-                }
-
-                tokenizer.next_token();
-
-                match &tokenizer.current_token {
-                    Token::Tag(tag) => match tag.as_str() {
-                        "DATE" => self.date = Some(Date::new(tokenizer, level + 1)),
-                        "TEXT" => self.text = Some(TextFromSource::new(tokenizer, level + 1)),
-                        _ => panic!(
-                            "{} unhandled SourceCitationData tag: {}",
-                            tokenizer.debug(),
-                            tag
-                        ),
-                    },
-                    Token::Level(_) => tokenizer.next_token(),
-                    _ => panic!(
-                        "Unexpected SourceCitationData token: {:?}",
-                        tokenizer.current_token
-                    ),
-                }
-            }
-        }
+        let handle_subset = |tag: &str, tokenizer: &mut Tokenizer| match tag {
+            "DATE" => self.date = Some(Date::new(tokenizer, level + 1)),
+            "TEXT" => self.text = Some(TextFromSource::new(tokenizer, level + 1)),
+            _ => panic!(
+                "{} unhandled SourceCitationData tag: {}",
+                tokenizer.debug(),
+                tag
+            ),
+        };
+        parse_subset(tokenizer, level, handle_subset);
     }
 }
 
@@ -363,35 +293,19 @@ impl Parser for TextFromSource {
         let mut value = String::new();
         value.push_str(&tokenizer.take_line_value());
 
-        loop {
-            if let Token::Level(cur_level) = tokenizer.current_token {
-                if cur_level <= level {
-                    break;
-                }
-
-                tokenizer.next_token();
-
-                match &tokenizer.current_token {
-                    Token::Tag(tag) => match tag.as_str() {
-                        "CONC" => value.push_str(&tokenizer.take_line_value()),
-                        "CONT" => {
-                            value.push('\n');
-                            value.push_str(&tokenizer.take_line_value());
-                        }
-                        _ => panic!(
-                            "{} unhandled TextFromSource tag: {}",
-                            tokenizer.debug(),
-                            tag
-                        ),
-                    },
-                    Token::Level(_) => tokenizer.next_token(),
-                    _ => panic!(
-                        "Unexpected TextFromSource token: {:?}",
-                        &tokenizer.current_token
-                    ),
-                }
+        let handle_subset = |tag: &str, tokenizer: &mut Tokenizer| match tag {
+            "CONC" => value.push_str(&tokenizer.take_line_value()),
+            "CONT" => {
+                value.push('\n');
+                value.push_str(&tokenizer.take_line_value());
             }
-        }
+            _ => panic!(
+                "{} unhandled TextFromSource tag: {}",
+                tokenizer.debug(),
+                tag
+            ),
+        };
+        parse_subset(tokenizer, level, handle_subset);
 
         if value != "" {
             self.value = Some(value);
@@ -421,7 +335,7 @@ impl Parser for TextFromSource {
 ///     0 @PERSON1@ INDI\n\
 ///     1 SOUR @SOURCE1@\n\
 ///     2 PAGE 42\n\
-///     2 QUAY 1
+///     2 QUAY 1\n\
 ///     0 TRLR";
 ///
 /// let mut ged = GedcomDocument::new(sample.chars());

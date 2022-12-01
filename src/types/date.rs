@@ -1,12 +1,12 @@
 use crate::{
-    Parser,
-    tokenizer::{Token, Tokenizer},
+    parse_subset,
+    tokenizer::Tokenizer,
     types::Note,
+    Parser,
 };
 
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
-
 
 /// Date encompasses a number of date formats, e.g. approximated, period, phrase and range.
 ///
@@ -76,21 +76,11 @@ impl Parser for Date {
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         self.value = Some(tokenizer.take_line_value());
 
-        loop {
-            if let Token::Level(cur_level) = tokenizer.current_token {
-                if cur_level <= level {
-                    break;
-                }
-            }
-            match &tokenizer.current_token {
-                Token::Tag(tag) => match tag.as_str() {
-                    "TIME" => self.time = Some(tokenizer.take_line_value()),
-                    _ => panic!("{} unhandled DATE tag: {}", tokenizer.debug(), tag),
-                },
-                Token::Level(_) => tokenizer.next_token(),
-                _ => panic!("Unexpected DATE token: {:?}", tokenizer.current_token),
-            }
-        }
+        let handle_subset = |tag: &str, tokenizer: &mut Tokenizer| match tag {
+            "TIME" => self.time = Some(tokenizer.take_line_value()),
+            _ => panic!("{} unhandled DATE tag: {}", tokenizer.debug(), tag),
+        };
+        parse_subset(tokenizer, level, handle_subset);
     }
 }
 
@@ -108,7 +98,7 @@ impl Parser for Date {
 ///     2 FORM LINEAGE-LINKED\n\
 ///     0 @MEDIA1@ OBJE\n\
 ///     1 FILE /home/user/media/file_name.bmp\n\
-///     1 CHAN 
+///     1 CHAN
 ///     2 DATE 1 APR 1998
 ///     3 TIME 12:34:56.789
 ///     2 NOTE A note
@@ -131,7 +121,6 @@ impl Parser for Date {
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct ChangeDate {
-    pub value: Option<String>,
     pub date: Option<Date>,
     pub note: Option<Note>,
 }
@@ -149,22 +138,11 @@ impl Parser for ChangeDate {
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         tokenizer.next_token();
 
-        loop {
-            if let Token::Level(cur_level) = tokenizer.current_token {
-                if cur_level <= level {
-                    break;
-                }
-                tokenizer.next_token();
-                match &tokenizer.current_token {
-                    Token::Tag(tag) => match tag.as_str() {
-                        "DATE" => self.date = Some(Date::new(tokenizer, level + 1)),
-                        "NOTE" => self.note = Some(Note::new(tokenizer, level + 1)),
-                        _ => panic!("{} unhandled ChangeDate tag: {}", tokenizer.debug(), tag),
-                    },
-                    Token::Level(_) => tokenizer.next_token(),
-                    _ => panic!("Unexpected ChangeDate token: {:?}", tokenizer.current_token),
-                }
-            }
-        }
+        let handle_subset = |tag: &str, tokenizer: &mut Tokenizer| match tag {
+            "DATE" => self.date = Some(Date::new(tokenizer, level + 1)),
+            "NOTE" => self.note = Some(Note::new(tokenizer, level + 1)),
+            _ => panic!("{} unhandled ChangeDate tag: {}", tokenizer.debug(), tag),
+        };
+        parse_subset(tokenizer, level, handle_subset);
     }
 }

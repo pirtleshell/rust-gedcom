@@ -1,7 +1,8 @@
 use crate::{
-    Parser,
-    tokenizer::{Token, Tokenizer},
+    parse_subset,
+    tokenizer::Tokenizer,
     types::Address,
+    Parser,
 };
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
@@ -24,7 +25,6 @@ pub struct Corporation {
     pub website: Option<String>,
 }
 
-
 impl Corporation {
     #[must_use]
     pub fn new(tokenizer: &mut Tokenizer, level: u8) -> Corporation {
@@ -39,27 +39,14 @@ impl Parser for Corporation {
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         self.value = Some(tokenizer.take_line_value());
 
-        loop {
-            if let Token::Level(cur_level) = tokenizer.current_token {
-                if cur_level <= level {
-                    break;
-                }
-            }
-            match &tokenizer.current_token {
-                Token::Tag(tag) => match tag.as_str() {
-                    "ADDR" => self.address = Some(Address::new(tokenizer, level + 1)),
-                    "PHON" => self.phone = Some(tokenizer.take_line_value()),
-                    "EMAIL" => self.email = Some(tokenizer.take_line_value()),
-                    "FAX" => self.fax = Some(tokenizer.take_line_value()),
-                    "WWW" => self.website = Some(tokenizer.take_line_value()),
-                    _ => panic!("{} Unhandled CORP tag: {}", tokenizer.debug(), tag),
-                },
-                Token::Level(_) => tokenizer.next_token(),
-                _ => panic!(
-                    "Unhandled CORP tag in header: {:?}",
-                    tokenizer.current_token
-                ),
-            }
-        }
+        let handle_subset = |tag: &str, tokenizer: &mut Tokenizer| match tag {
+            "ADDR" => self.address = Some(Address::new(tokenizer, level + 1)),
+            "PHON" => self.phone = Some(tokenizer.take_line_value()),
+            "EMAIL" => self.email = Some(tokenizer.take_line_value()),
+            "FAX" => self.fax = Some(tokenizer.take_line_value()),
+            "WWW" => self.website = Some(tokenizer.take_line_value()),
+            _ => panic!("{} Unhandled CORP tag: {}", tokenizer.debug(), tag),
+        };
+        parse_subset(tokenizer, level, handle_subset);
     }
 }

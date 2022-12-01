@@ -3,8 +3,10 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 use crate::{
-    Parser,
+    parse_subset,
     tokenizer::{Token, Tokenizer},
+    types::UserDefinedData,
+    Parser,
 };
 
 /// Physical address at which a fact occurs
@@ -19,6 +21,7 @@ pub struct Address {
     pub state: Option<String>,
     pub post: Option<String>,
     pub country: Option<String>,
+    pub custom_data: Vec<UserDefinedData>,
 }
 
 impl Address {
@@ -44,31 +47,21 @@ impl Parser for Address {
             tokenizer.next_token();
         }
 
-        loop {
-            if let Token::Level(cur_level) = tokenizer.current_token {
-                if cur_level <= level {
-                    break;
-                }
+        let handle_subset = |tag: &str, tokenizer: &mut Tokenizer| match tag {
+            "CONT" | "CONC" => {
+                value.push('\n');
+                value.push_str(&tokenizer.take_line_value());
             }
-            match &tokenizer.current_token {
-                Token::Tag(tag) => match tag.as_str() {
-                    "CONT" | "CONC" => {
-                        value.push('\n');
-                        value.push_str(&tokenizer.take_line_value());
-                    }
-                    "ADR1" => self.adr1 = Some(tokenizer.take_line_value()),
-                    "ADR2" => self.adr2 = Some(tokenizer.take_line_value()),
-                    "ADR3" => self.adr3 = Some(tokenizer.take_line_value()),
-                    "CITY" => self.city = Some(tokenizer.take_line_value()),
-                    "STAE" => self.state = Some(tokenizer.take_line_value()),
-                    "POST" => self.post = Some(tokenizer.take_line_value()),
-                    "CTRY" => self.country = Some(tokenizer.take_line_value()),
-                    _ => panic!("{} Unhandled Address Tag: {}", tokenizer.debug(), tag),
-                },
-                Token::Level(_) => tokenizer.next_token(),
-                _ => panic!("Unhandled Address Token: {:?}", tokenizer.current_token),
-            }
-        }
+            "ADR1" => self.adr1 = Some(tokenizer.take_line_value()),
+            "ADR2" => self.adr2 = Some(tokenizer.take_line_value()),
+            "ADR3" => self.adr3 = Some(tokenizer.take_line_value()),
+            "CITY" => self.city = Some(tokenizer.take_line_value()),
+            "STAE" => self.state = Some(tokenizer.take_line_value()),
+            "POST" => self.post = Some(tokenizer.take_line_value()),
+            "CTRY" => self.country = Some(tokenizer.take_line_value()),
+            _ => panic!("{} Unhandled Address Tag: {}", tokenizer.debug(), tag),
+        };
+        self.custom_data = parse_subset(tokenizer, level, handle_subset);
 
         if &value != "" {
             self.value = Some(value);

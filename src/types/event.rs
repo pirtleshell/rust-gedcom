@@ -1,4 +1,5 @@
 use crate::{
+    parse_subset,
     tokenizer::{Token, Tokenizer},
     types::{Date, FamilyLink, Note, SourceCitation},
     Parser,
@@ -183,7 +184,7 @@ impl EventDetail {
     }
 
     pub fn add_family_event_detail(&mut self, detail: FamilyEventDetail) {
-      self.family_event_details.push(detail);
+        self.family_event_details.push(detail);
     }
 
     #[must_use]
@@ -240,35 +241,19 @@ impl Parser for EventDetail {
             tokenizer.next_token();
         }
 
-        loop {
-            if let Token::Level(cur_level) = tokenizer.current_token {
-                if cur_level <= level {
-                    break;
-                }
+        let handle_subset = |tag: &str, tokenizer: &mut Tokenizer| match tag {
+            "DATE" => self.date = Some(Date::new(tokenizer, level + 1)),
+            "PLAC" => self.place = Some(tokenizer.take_line_value()),
+            "SOUR" => self.add_citation(SourceCitation::new(tokenizer, level + 1)),
+            "FAMC" => self.family_link = Some(FamilyLink::new(tokenizer, level + 1, tag)),
+            "HUSB" | "WIFE" => {
+                self.add_family_event_detail(FamilyEventDetail::new(tokenizer, level + 1, tag));
             }
-
-            match &tokenizer.current_token {
-                Token::Tag(tag) => match tag.as_str() {
-                    "DATE" => self.date = Some(Date::new(tokenizer, level + 1)),
-                    "PLAC" => self.place = Some(tokenizer.take_line_value()),
-                    "SOUR" => self.add_citation(SourceCitation::new(tokenizer, level + 1)),
-                    "FAMC" => {
-                        let tag_clone = tag.clone();
-                        self.family_link =
-                            Some(FamilyLink::new(tokenizer, level + 1, tag_clone.as_str()))
-                    }
-                    "HUSB" | "WIFE" => {
-                      let tag_clone = tag.clone();
-                      self.add_family_event_detail(FamilyEventDetail::new(tokenizer, level + 1, tag_clone.as_str()));
-                    }
-                    "NOTE" => self.note = Some(Note::new(tokenizer, level + 1)),
-                    "TYPE" => self.event_type = Some(tokenizer.take_line_value()),
-                    _ => panic!("{} Unhandled Event Tag: {}", tokenizer.debug(), tag),
-                },
-                Token::Level(_) => tokenizer.next_token(),
-                _ => panic!("Unhandled Event Token: {:?}", tokenizer.current_token),
-            }
-        }
+            "NOTE" => self.note = Some(Note::new(tokenizer, level + 1)),
+            "TYPE" => self.event_type = Some(tokenizer.take_line_value()),
+            _ => panic!("{} Unhandled Event Tag: {}", tokenizer.debug(), tag),
+        };
+        parse_subset(tokenizer, level, handle_subset);
 
         if &value != "" {
             self.value = Some(value);
@@ -359,29 +344,15 @@ impl FamilyEventDetail {
 impl Parser for FamilyEventDetail {
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         tokenizer.next_token();
-        loop {
-            if let Token::Level(cur_level) = tokenizer.current_token {
-                if cur_level <= level {
-                    break;
-                }
-            }
-            tokenizer.next_token();
-            match &tokenizer.current_token {
-                Token::Tag(tag) => match tag.as_str() {
-                    "AGE" => self.age = Some(tokenizer.take_line_value()),
-                    _ => panic!(
-                        "{}, Unrecognized FamilyEventDetail tag: {}",
-                        tokenizer.debug(),
-                        tag
-                    ),
-                },
-                Token::Level(_) => tokenizer.next_token(),
-                _ => panic!(
-                    "{} Unrecognized FamilyEventDetail: {:?}",
-                    tokenizer.debug(),
-                    tokenizer.current_token
-                ),
-            }
-        }
+
+        let handle_subset = |tag: &str, tokenizer: &mut Tokenizer| match tag {
+            "AGE" => self.age = Some(tokenizer.take_line_value()),
+            _ => panic!(
+                "{}, Unrecognized FamilyEventDetail tag: {}",
+                tokenizer.debug(),
+                tag
+            ),
+        };
+        parse_subset(tokenizer, level, handle_subset);
     }
 }

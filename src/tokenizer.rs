@@ -1,9 +1,7 @@
 //! Handles the tokenization of a GEDCOM file
 use std::str::Chars;
 
-use crate::types::UserDefinedData;
-
-/// The base enum of Token types making use of 
+/// The base enum of Token types making use of
 /// [GEDCOM Standard Release 5.5.1](https://edge.fscdn.org/assets/img/documents/ged551-5bac5e57fe88dd37df0e153d9c515335.pdf),
 /// p.11 `gedcom_line: level + delim + [optional_xref_ID] + tag + [optional_line_value] +
 /// terminator`
@@ -202,15 +200,13 @@ impl<'a> Tokenizer<'a> {
                     _ => panic!("{} Unhandled Continuation Tag: {}", self.debug(), tag),
                 },
                 Token::Level(_) => self.next_token(),
-                _ => panic!("{} Unhandled Continuation Token: {:?}", self.debug(), self.current_token),
+                _ => panic!(
+                    "{} Unhandled Continuation Token: {:?}",
+                    self.debug(),
+                    self.current_token
+                ),
             }
         }
         value
-    }
-
-    /// parse_custom_tag handles User Defined Data. See Gedcom 5.5 spec, p.56
-    pub fn parse_custom_tag(&mut self, tag: String) -> UserDefinedData {
-        let value = self.take_line_value();
-        UserDefinedData { tag, value }
     }
 }

@@ -1,4 +1,5 @@
 use crate::{
+    parse_subset,
     tokenizer::{Token, Tokenizer},
     types::{
         event::HasEvents, ChangeDate, Date, EventDetail, MultimediaRecord, Note, SourceCitation,
@@ -11,7 +12,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 
 /// A Person within the family tree
-#[derive(Debug)]
+#[derive(Debug, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct Individual {
     pub xref: Option<Xref>,
@@ -31,20 +32,8 @@ pub struct Individual {
 impl Individual {
     #[must_use]
     pub fn new(tokenizer: &mut Tokenizer, level: u8, xref: Option<Xref>) -> Individual {
-        let mut indi = Individual {
-            xref,
-            name: None,
-            sex: None,
-            events: Vec::new(),
-            families: Vec::new(),
-            attributes: Vec::new(),
-            custom_data: Vec::new(),
-            last_updated: None,
-            source: Vec::new(),
-            multimedia: Vec::new(),
-            change_date: None,
-            note: None,
-        };
+        let mut indi = Individual::default();
+        indi.xref = xref;
         indi.parse(tokenizer, level);
         indi
     }
@@ -60,10 +49,6 @@ impl Individual {
         if do_add {
             self.families.push(link);
         }
-    }
-
-    pub fn add_custom_data(&mut self, data: UserDefinedData) {
-        self.custom_data.push(data)
     }
 
     pub fn add_source_citation(&mut self, sour: SourceCitation) {
@@ -94,51 +79,33 @@ impl Parser for Individual {
         // skip over INDI tag name
         tokenizer.next_token();
 
-        while tokenizer.current_token != Token::Level(level) {
-            match &tokenizer.current_token {
-                Token::Tag(tag) => match tag.as_str() {
-                    // TODO handle xref
-                    "NAME" => self.name = Some(Name::new(tokenizer, level + 1)),
-                    "SEX" => self.sex = Some(Gender::new(tokenizer, level + 1)),
-                    "ADOP" | "BIRT" | "BAPM" | "BARM" | "BASM" | "BLES" | "BURI" | "CENS"
-                    | "CHR" | "CHRA" | "CONF" | "CREM" | "DEAT" | "EMIG" | "FCOM" | "GRAD"
-                    | "IMMI" | "NATU" | "ORDN" | "RETI" | "RESI" | "PROB" | "WILL" | "EVEN"
-                    | "MARR" => {
-                        let tag_clone = tag.clone();
-                        self.add_event(EventDetail::new(tokenizer, level + 1, tag_clone.as_str()));
-                    }
-                    "CAST" | "DSCR" | "EDUC" | "IDNO" | "NATI" | "NCHI" | "NMR" | "OCCU"
-                    | "PROP" | "RELI" | "SSN" | "TITL" | "FACT" => {
-                        // RESI should be an attribute or an event?
-                        let tag_clone = tag.clone();
-                        self.add_attribute(AttributeDetail::new(
-                            tokenizer,
-                            level + 1,
-                            tag_clone.as_str(),
-                        ));
-                    }
-                    "FAMC" | "FAMS" => {
-                        let tag_clone = tag.clone();
-                        self.add_family(FamilyLink::new(tokenizer, level + 1, tag_clone.as_str()));
-                    }
-                    "CHAN" => self.change_date = Some(ChangeDate::new(tokenizer, level + 1)),
-                    "SOUR" => {
-                        self.add_source_citation(SourceCitation::new(tokenizer, level + 1));
-                    }
-                    "OBJE" => {
-                        self.add_multimedia(MultimediaRecord::new(tokenizer, level + 1, None))
-                    }
-                    "NOTE" => self.note = Some(Note::new(tokenizer, level + 1)),
-                    _ => panic!("{} Unhandled Individual Tag: {}", tokenizer.debug(), tag),
-                },
-                Token::CustomTag(tag) => {
-                    let tag_clone = tag.clone();
-                    self.add_custom_data(tokenizer.parse_custom_tag(tag_clone))
-                }
-                Token::Level(_) => tokenizer.next_token(),
-                _ => panic!("Unhandled Individual Token: {:?}", tokenizer.current_token),
+        let handle_subset = |tag: &str, tokenizer: &mut Tokenizer| match tag {
+            // TODO handle xref
+            "NAME" => self.name = Some(Name::new(tokenizer, level + 1)),
+            "SEX" => self.sex = Some(Gender::new(tokenizer, level + 1)),
+            "ADOP" | "BIRT" | "BAPM" | "BARM" | "BASM" | "BLES" | "BURI" | "CENS" | "CHR"
+            | "CHRA" | "CONF" | "CREM" | "DEAT" | "EMIG" | "FCOM" | "GRAD" | "IMMI" | "NATU"
+            | "ORDN" | "RETI" | "RESI" | "PROB" | "WILL" | "EVEN" | "MARR" => {
+                self.add_event(EventDetail::new(tokenizer, level + 1, tag));
             }
-        }
+            "CAST" | "DSCR" | "EDUC" | "IDNO" | "NATI" | "NCHI" | "NMR" | "OCCU" | "PROP"
+            | "RELI" | "SSN" | "TITL" | "FACT" => {
+                // RESI should be an attribute or an event?
+                self.add_attribute(AttributeDetail::new(tokenizer, level + 1, tag));
+            }
+            "FAMC" | "FAMS" => {
+                self.add_family(FamilyLink::new(tokenizer, level + 1, tag));
+            }
+            "CHAN" => self.change_date = Some(ChangeDate::new(tokenizer, level + 1)),
+            "SOUR" => {
+                self.add_source_citation(SourceCitation::new(tokenizer, level + 1));
+            }
+            "OBJE" => self.add_multimedia(MultimediaRecord::new(tokenizer, level + 1, None)),
+            "NOTE" => self.note = Some(Note::new(tokenizer, level + 1)),
+            _ => panic!("{} Unhandled Individual Tag: {}", tokenizer.debug(), tag),
+        };
+
+        self.custom_data = parse_subset(tokenizer, level, handle_subset);
     }
 }
 
@@ -221,10 +188,6 @@ impl Gender {
     pub fn add_source_citation(&mut self, sour: SourceCitation) {
         self.sources.push(sour);
     }
-
-    pub fn add_custom_data(&mut self, data: UserDefinedData) {
-        self.custom_data.push(data)
-    }
 }
 
 impl Parser for Gender {
@@ -247,31 +210,12 @@ impl Parser for Gender {
             tokenizer.next_token();
         }
 
-        loop {
-            if let Token::Level(cur_level) = tokenizer.current_token {
-                if cur_level <= level {
-                    break;
-                }
-            }
-
-            match &tokenizer.current_token {
-                Token::Tag(tag) => match tag.as_str() {
-                    "FACT" => self.fact = Some(tokenizer.take_continued_text(level + 1)),
-                    "SOUR" => self.add_source_citation(SourceCitation::new(tokenizer, level + 1)),
-                    _ => panic!("{}, Unhandled Gender tag: {}", tokenizer.debug(), tag),
-                },
-                Token::CustomTag(tag) => {
-                    let tag_clone = tag.clone();
-                    self.add_custom_data(tokenizer.parse_custom_tag(tag_clone));
-                }
-                Token::Level(_) => tokenizer.next_token(),
-                _ => panic!(
-                    "{}, Unhandled Gender token: {:?}",
-                    tokenizer.debug(),
-                    tokenizer.current_token
-                ),
-            }
-        }
+        let handle_subset = |tag: &str, tokenizer: &mut Tokenizer| match tag {
+            "FACT" => self.fact = Some(tokenizer.take_continued_text(level + 1)),
+            "SOUR" => self.add_source_citation(SourceCitation::new(tokenizer, level + 1)),
+            _ => panic!("{}, Unhandled Gender tag: {}", tokenizer.debug(), tag),
+        };
+        self.custom_data = parse_subset(tokenizer, level, handle_subset);
     }
 }
 
@@ -396,6 +340,7 @@ pub struct FamilyLink {
     pub child_linkage_status: Option<ChildLinkStatus>,
     pub adopted_by: Option<AdoptedByWhichParent>,
     pub note: Option<Note>,
+    pub custom_data: Vec<UserDefinedData>,
 }
 
 impl FamilyLink {
@@ -414,6 +359,7 @@ impl FamilyLink {
             child_linkage_status: None,
             adopted_by: None,
             note: None,
+            custom_data: Vec::new(),
         };
         family_link.parse(tokenizer, level);
         family_link
@@ -456,26 +402,14 @@ impl FamilyLink {
 
 impl Parser for FamilyLink {
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
-        loop {
-            if let Token::Level(cur_level) = tokenizer.current_token {
-                if cur_level <= level {
-                    break;
-                }
-            }
-            match &tokenizer.current_token {
-                Token::Tag(tag) => match tag.as_str() {
-                    "PEDI" => self.set_pedigree(tokenizer.take_line_value().as_str()),
-                    "STAT" => self.set_child_linkage_status(&tokenizer.take_line_value().as_str()),
-                    "NOTE" => self.note = Some(Note::new(tokenizer, level + 1)),
-                    "ADOP" => {
-                        self.set_adopted_by_which_parent(&tokenizer.take_line_value().as_str())
-                    }
-                    _ => panic!("{} Unhandled FamilyLink Tag: {}", tokenizer.debug(), tag),
-                },
-                Token::Level(_) => tokenizer.next_token(),
-                _ => panic!("Unhandled FamilyLink Token: {:?}", tokenizer.current_token),
-            }
-        }
+        let handle_subset = |tag: &str, tokenizer: &mut Tokenizer| match tag {
+            "PEDI" => self.set_pedigree(tokenizer.take_line_value().as_str()),
+            "STAT" => self.set_child_linkage_status(&tokenizer.take_line_value().as_str()),
+            "NOTE" => self.note = Some(Note::new(tokenizer, level + 1)),
+            "ADOP" => self.set_adopted_by_which_parent(&tokenizer.take_line_value().as_str()),
+            _ => panic!("{} Unhandled FamilyLink Tag: {}", tokenizer.debug(), tag),
+        };
+        self.custom_data = parse_subset(tokenizer, level, handle_subset);
     }
 }
 
@@ -517,27 +451,17 @@ impl Parser for Name {
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         self.value = Some(tokenizer.take_line_value());
 
-        loop {
-            if let Token::Level(cur_level) = tokenizer.current_token {
-                if cur_level <= level {
-                    break;
-                }
-            }
-            match &tokenizer.current_token {
-                Token::Tag(tag) => match tag.as_str() {
-                    "GIVN" => self.given = Some(tokenizer.take_line_value()),
-                    "NPFX" => self.prefix = Some(tokenizer.take_line_value()),
-                    "NSFX" => self.suffix = Some(tokenizer.take_line_value()),
-                    "SPFX" => self.surname_prefix = Some(tokenizer.take_line_value()),
-                    "SURN" => self.surname = Some(tokenizer.take_line_value()),
-                    "SOUR" => self.add_source_citation(SourceCitation::new(tokenizer, level + 1)),
-                    "NOTE" => self.note = Some(Note::new(tokenizer, level + 1)),
-                    _ => panic!("{} Unhandled Name Tag: {}", tokenizer.debug(), tag),
-                },
-                Token::Level(_) => tokenizer.next_token(),
-                _ => panic!("Unhandled Name Token: {:?}", tokenizer.current_token),
-            }
-        }
+        let handle_subset = |tag: &str, tokenizer: &mut Tokenizer| match tag {
+            "GIVN" => self.given = Some(tokenizer.take_line_value()),
+            "NPFX" => self.prefix = Some(tokenizer.take_line_value()),
+            "NSFX" => self.suffix = Some(tokenizer.take_line_value()),
+            "SPFX" => self.surname_prefix = Some(tokenizer.take_line_value()),
+            "SURN" => self.surname = Some(tokenizer.take_line_value()),
+            "SOUR" => self.add_source_citation(SourceCitation::new(tokenizer, level + 1)),
+            "NOTE" => self.note = Some(Note::new(tokenizer, level + 1)),
+            _ => panic!("{} Unhandled Name Tag: {}", tokenizer.debug(), tag),
+        };
+        parse_subset(tokenizer, level, handle_subset);
     }
 }
 
@@ -692,34 +616,19 @@ impl Parser for AttributeDetail {
             tokenizer.next_token();
         }
 
-        loop {
-            if let Token::Level(cur_level) = &tokenizer.current_token {
-                if cur_level <= &level {
-                    break;
-                }
-            }
-            // tokenizer.next_token();
-            match &tokenizer.current_token {
-                Token::Tag(tag) => match tag.as_str() {
-                    "DATE" => self.date = Some(Date::new(tokenizer, level + 1)),
-                    "SOUR" => self.add_source_citation(SourceCitation::new(tokenizer, level + 1)),
-                    "PLAC" => self.place = Some(tokenizer.take_line_value()),
-                    "NOTE" => self.note = Some(Note::new(tokenizer, level + 1)),
-                    "TYPE" => self.attribute_type = Some(tokenizer.take_continued_text(level + 1)),
-                    _ => panic!(
-                        "{}, Unhandled AttributeDetail tag: {}",
-                        tokenizer.debug(),
-                        tag
-                    ),
-                },
-                Token::Level(_) => tokenizer.next_token(),
-                _ => panic!(
-                    "{}, Unhandled AttributeDetail token: {:?}",
-                    tokenizer.debug(),
-                    tokenizer.current_token
-                ),
-            }
-        }
+        let handle_subset = |tag: &str, tokenizer: &mut Tokenizer| match tag {
+            "DATE" => self.date = Some(Date::new(tokenizer, level + 1)),
+            "SOUR" => self.add_source_citation(SourceCitation::new(tokenizer, level + 1)),
+            "PLAC" => self.place = Some(tokenizer.take_line_value()),
+            "NOTE" => self.note = Some(Note::new(tokenizer, level + 1)),
+            "TYPE" => self.attribute_type = Some(tokenizer.take_continued_text(level + 1)),
+            _ => panic!(
+                "{}, Unhandled AttributeDetail tag: {}",
+                tokenizer.debug(),
+                tag
+            ),
+        };
+        parse_subset(tokenizer, level, handle_subset);
 
         if &value != "" {
             self.value = Some(value);

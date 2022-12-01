@@ -1,12 +1,13 @@
 use crate::{
+    parse_subset,
+    tokenizer::Tokenizer,
     Parser,
-    tokenizer::{Token, Tokenizer},
 };
 
 use super::{Address, Xref};
 
 /// Data repository, the `REPO` tag
-#[derive(Debug)]
+#[derive(Debug, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct Repository {
     /// Optional reference to link to this repo
@@ -20,11 +21,8 @@ pub struct Repository {
 impl Repository {
     #[must_use]
     pub fn new(tokenizer: &mut Tokenizer, level: u8, xref: Option<String>) -> Repository {
-        let mut repo = Repository {
-            xref,
-            name: None,
-            address: None,
-        };
+        let mut repo = Repository::default();
+        repo.xref = xref;
         repo.parse(tokenizer, level);
         repo
     }
@@ -36,27 +34,17 @@ impl Parser for Repository {
         // skip REPO tag
         tokenizer.next_token();
 
-        loop {
-            if let Token::Level(cur_level) = tokenizer.current_token {
-                if cur_level <= level {
-                    break;
-                }
-            }
-            match &tokenizer.current_token {
-                Token::Tag(tag) => match tag.as_str() {
-                    "NAME" => self.name = Some(tokenizer.take_line_value()),
-                    "ADDR" => self.address = Some(Address::new(tokenizer, level + 1)),
-                    _ => panic!("{} Unhandled Repository Tag: {}", tokenizer.debug(), tag),
-                },
-                Token::Level(_) => tokenizer.next_token(),
-                _ => panic!("Unhandled Repository Token: {:?}", tokenizer.current_token),
-            }
-        }
+        let handle_subset = |tag: &str, tokenizer: &mut Tokenizer| match tag {
+            "NAME" => self.name = Some(tokenizer.take_line_value()),
+            "ADDR" => self.address = Some(Address::new(tokenizer, level + 1)),
+            _ => panic!("{} Unhandled Repository Tag: {}", tokenizer.debug(), tag),
+        };
+        parse_subset(tokenizer, level, handle_subset);
     }
 }
 
 /// Citation linking a `Source` to a data `Repository`
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct RepoCitation {
     /// Reference to the `Repository`
@@ -67,10 +55,8 @@ pub struct RepoCitation {
 
 impl RepoCitation {
     pub fn new(tokenizer: &mut Tokenizer, level: u8) -> RepoCitation {
-        let mut rc = RepoCitation {
-            xref: tokenizer.take_line_value(),
-            call_number: None,
-        };
+        let mut rc = RepoCitation::default();
+        rc.xref = tokenizer.take_line_value();
         rc.parse(tokenizer, level);
         rc
     }
@@ -78,23 +64,10 @@ impl RepoCitation {
 
 impl Parser for RepoCitation {
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
-        loop {
-            if let Token::Level(cur_level) = tokenizer.current_token {
-                if cur_level <= level {
-                    break;
-                }
-            }
-            match &tokenizer.current_token {
-                Token::Tag(tag) => match tag.as_str() {
-                    "CALN" => self.call_number = Some(tokenizer.take_line_value()),
-                    _ => panic!("{} Unhandled RepoCitation Tag: {}", tokenizer.debug(), tag),
-                },
-                Token::Level(_) => tokenizer.next_token(),
-                _ => panic!(
-                    "Unhandled RepoCitation Token: {:?}",
-                    tokenizer.current_token
-                ),
-            }
-        }
+        let handle_subset = |tag: &str, tokenizer: &mut Tokenizer| match tag {
+            "CALN" => self.call_number = Some(tokenizer.take_line_value()),
+            _ => panic!("{} Unhandled RepoCitation Tag: {}", tokenizer.debug(), tag),
+        };
+        parse_subset(tokenizer, level, handle_subset);
     }
 }

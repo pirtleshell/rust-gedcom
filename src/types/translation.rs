@@ -2,8 +2,8 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    Parser,
-    tokenizer::{Token, Tokenizer},
+    tokenizer::Tokenizer,
+    Parser, parse_subset,
 };
 
 /// Translation (tag:TRAN) is a type of TRAN for unstructured human-readable text, such as
@@ -30,28 +30,15 @@ impl Translation {
 }
 
 impl Parser for Translation {
-    
     ///parse handles the TRAN tag
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
-
         self.value = Some(tokenizer.take_line_value());
 
-        loop {
-            if let Token::Level(cur_level) = tokenizer.current_token {
-                if cur_level <= level {
-                    break;
-                }
-            }
-
-            match &tokenizer.current_token {
-                Token::Tag(tag) => match tag.as_str() {
-                    "MIME" => self.mime = Some(tokenizer.take_line_value()),
-                    "LANG" => self.language = Some(tokenizer.take_line_value()),
-                    _ => panic!("{} unhandled NOTE tag: {}", tokenizer.debug(), tag),
-                },
-                Token::Level(_) => tokenizer.next_token(),
-                _ => panic!("Unexpected NOTE token: {:?}", &tokenizer.current_token),
-            }
-        }
+        let handle_subset = |tag: &str, tokenizer: &mut Tokenizer| match tag {
+            "MIME" => self.mime = Some(tokenizer.take_line_value()),
+            "LANG" => self.language = Some(tokenizer.take_line_value()),
+            _ => panic!("{} unhandled NOTE tag: {}", tokenizer.debug(), tag),
+        };
+        parse_subset(tokenizer, level, handle_subset);
     }
 }

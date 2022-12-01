@@ -1,5 +1,6 @@
 use crate::{
-    tokenizer::{Token, Tokenizer},
+    parse_subset,
+    tokenizer::Tokenizer,
     types::{Source, Translation},
     Parser,
 };
@@ -82,23 +83,12 @@ impl Parser for Note {
     /// parse handles the NOTE tag
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         self.value = Some(tokenizer.take_continued_text(level));
-        loop {
-            if let Token::Level(cur_level) = tokenizer.current_token {
-                if cur_level <= level {
-                    break;
-                }
-            }
-
-            match &tokenizer.current_token {
-                Token::Tag(tag) => match tag.as_str() {
-                    "MIME" => self.mime = Some(tokenizer.take_line_value()),
-                    "TRANS" => self.translation = Some(Translation::new(tokenizer, level + 1)),
-                    "LANG" => self.language = Some(tokenizer.take_line_value()),
-                    _ => panic!("{} unhandled NOTE tag: {}", tokenizer.debug(), tag),
-                },
-                Token::Level(_) => tokenizer.next_token(),
-                _ => panic!("Unexpected NOTE token: {:?}", &tokenizer.current_token),
-            }
-        }
+        let handle_subset = |tag: &str, tokenizer: &mut Tokenizer| match tag {
+            "MIME" => self.mime = Some(tokenizer.take_line_value()),
+            "TRANS" => self.translation = Some(Translation::new(tokenizer, level + 1)),
+            "LANG" => self.language = Some(tokenizer.take_line_value()),
+            _ => panic!("{} unhandled NOTE tag: {}", tokenizer.debug(), tag),
+        };
+        parse_subset(tokenizer, level, handle_subset);
     }
 }

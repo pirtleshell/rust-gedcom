@@ -1,4 +1,5 @@
 use crate::{
+    parse_subset,
     tokenizer::{Token, Tokenizer},
     types::{
         event::HasEvents, ChangeDate, EventDetail, MultimediaRecord, Note, SourceCitation,
@@ -79,10 +80,6 @@ impl Family {
     pub fn add_note(&mut self, note: Note) {
         self.notes.push(note);
     }
-
-    pub fn add_custom_data(&mut self, custom: UserDefinedData) {
-        self.custom_data.push(custom);
-    }
 }
 
 impl Parser for Family {
@@ -91,46 +88,31 @@ impl Parser for Family {
         // skip over FAM tag name
         tokenizer.next_token();
 
-        loop {
-            if let Token::Level(cur_level) = tokenizer.current_token {
-                if cur_level <= level {
-                    break;
-                }
-            }
-
+        let handle_subset = |tag: &str, tokenizer: &mut Tokenizer| {
             let mut pointer: Option<String> = None;
             if let Token::Pointer(xref) = &tokenizer.current_token {
                 pointer = Some(xref.to_string());
                 tokenizer.next_token();
             }
 
-            match &tokenizer.current_token {
-                Token::Tag(tag) => match tag.as_str() {
-                    "MARR" | "ANUL" | "CENS" | "DIV" | "DIVF" | "ENGA" | "MARB" | "MARC"
-                    | "MARL" | "MARS" | "RESI" | "EVEN" => {
-                        let tag_clone = tag.clone();
-                        self.add_event(EventDetail::new(tokenizer, level + 1, tag_clone.as_str()));
-                    }
-                    "HUSB" => self.set_individual1(tokenizer.take_line_value()),
-                    "WIFE" => self.set_individual2(tokenizer.take_line_value()),
-                    "CHIL" => self.add_child(tokenizer.take_line_value()),
-                    "NCHI" => self.num_children = Some(tokenizer.take_line_value()),
-                    "CHAN" => self.change_date = Some(ChangeDate::new(tokenizer, level + 1)),
-                    "SOUR" => self.add_source(SourceCitation::new(tokenizer, level + 1)),
-                    "NOTE" => self.add_note(Note::new(tokenizer, level + 1)),
-                    "OBJE" => {
-                        self.add_multimedia(MultimediaRecord::new(tokenizer, level + 1, pointer))
-                    }
-                    _ => panic!("{} Unhandled Family Tag: {}", tokenizer.debug(), tag),
-                },
-                Token::CustomTag(tag) => {
-                    let tag_clone = tag.clone();
-                    self.add_custom_data(tokenizer.parse_custom_tag(tag_clone));
+            match tag {
+                "MARR" | "ANUL" | "CENS" | "DIV" | "DIVF" | "ENGA" | "MARB" | "MARC" | "MARL"
+                | "MARS" | "RESI" | "EVEN" => {
+                    self.add_event(EventDetail::new(tokenizer, level + 1, tag));
                 }
-                Token::Level(_) => tokenizer.next_token(),
-                _ => panic!("Unhandled Family Token: {:?}", tokenizer.current_token),
+                "HUSB" => self.set_individual1(tokenizer.take_line_value()),
+                "WIFE" => self.set_individual2(tokenizer.take_line_value()),
+                "CHIL" => self.add_child(tokenizer.take_line_value()),
+                "NCHI" => self.num_children = Some(tokenizer.take_line_value()),
+                "CHAN" => self.change_date = Some(ChangeDate::new(tokenizer, level + 1)),
+                "SOUR" => self.add_source(SourceCitation::new(tokenizer, level + 1)),
+                "NOTE" => self.add_note(Note::new(tokenizer, level + 1)),
+                "OBJE" => self.add_multimedia(MultimediaRecord::new(tokenizer, level + 1, pointer)),
+                _ => panic!("{} Unhandled Family Tag: {}", tokenizer.debug(), tag),
             }
-        }
+        };
+
+        self.custom_data = parse_subset(tokenizer, level, handle_subset);
     }
 }
 
