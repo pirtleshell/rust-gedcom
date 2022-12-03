@@ -32,7 +32,7 @@ use tokenizer::{Token, Tokenizer};
 pub mod types;
 use types::{
     Family, Header, Individual, MultimediaRecord, Repository, Source, Submission, Submitter,
-    UserDefinedData,
+    UserDefinedDataset,
 };
 
 /// The GedcomDocument can convert the token list into a data structure. The order of the Dataset
@@ -94,11 +94,11 @@ pub fn parse_subset<F>(
     tokenizer: &mut Tokenizer,
     level: u8,
     mut tag_handler: F,
-) -> Vec<UserDefinedData>
+) -> Vec<Box<UserDefinedDataset>>
 where
     F: FnMut(&str, &mut Tokenizer),
 {
-    let mut custom_data = Vec::new();
+    let mut non_standard_dataset = Vec::new();
     loop {
         if let Token::Level(curl_level) = tokenizer.current_token {
             if curl_level <= level {
@@ -113,7 +113,12 @@ where
             }
             Token::CustomTag(tag) => {
                 let tag_clone = tag.clone();
-                custom_data.push(parse_custom_tag(tokenizer, tag_clone));
+                non_standard_dataset.push(Box::new(UserDefinedDataset::new(
+                    tokenizer,
+                    level + 1,
+                    &tag_clone,
+                )));
+                // custom_data.push(parse_custom_tag(tokenizer, tag_clone));
             }
             Token::Level(_) => tokenizer.next_token(),
             _ => panic!(
@@ -123,13 +128,7 @@ where
             ),
         }
     }
-    custom_data
-}
-
-/// parse_custom_tag handles User Defined Data. See Gedcom 5.5 spec, p.56
-pub fn parse_custom_tag(tokenizer: &mut Tokenizer, tag: String) -> UserDefinedData {
-    let value = tokenizer.take_line_value();
-    UserDefinedData { tag, value }
+    non_standard_dataset
 }
 
 /// GedcomData is the data structure representing all the data within a gedcom file
@@ -168,10 +167,6 @@ pub fn parse_custom_tag(tokenizer: &mut Tokenizer, tag: String) -> UserDefinedDa
 ///
 /// assert_eq!(data.sources.len(), 1);
 /// assert_eq!(data.sources[0].xref.as_ref().unwrap(), "@SOURCE1@");
-///
-/// assert_eq!(data.custom_data.len(), 1);
-/// assert_eq!(data.custom_data[0].tag, "_MYOWNTAG");
-/// assert_eq!(data.custom_data[0].value, "This is a non-standard tag. Not recommended but allowed");
 /// ```
 #[derive(Debug, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
@@ -196,7 +191,7 @@ pub struct GedcomData {
     /// so that they will not conflict with future GEDCOM standard tags. Systems that read
     /// user-defined tags must consider that they have meaning only with respect to a system
     /// contained in the HEAD.SOUR context.
-    pub custom_data: Vec<UserDefinedData>,
+    pub custom_data: Vec<Box<UserDefinedDataset>>,
 }
 
 // should maybe store these by xref if available?
@@ -245,8 +240,8 @@ impl GedcomData {
     }
 
     /// Adds a `UserDefinedData` to the tree
-    pub fn add_custom_data(&mut self, data: UserDefinedData) {
-        self.custom_data.push(data)
+    pub fn add_custom_data(&mut self, non_standard_data: UserDefinedDataset) {
+        self.custom_data.push(Box::new(non_standard_data));
     }
 
     /// Outputs a summary of data contained in the tree to stdout
@@ -308,7 +303,8 @@ impl Parser for GedcomData {
                 };
             } else if let Token::CustomTag(tag) = &tokenizer.current_token {
                 let tag_clone = tag.clone();
-                self.add_custom_data(parse_custom_tag(tokenizer, tag_clone));
+                self.add_custom_data(UserDefinedDataset::new(tokenizer, level + 1, &tag_clone));
+                // self.add_custom_data(parse_custom_tag(tokenizer, tag_clone));
                 while tokenizer.current_token != Token::Level(level) {
                     tokenizer.next_token();
                 }

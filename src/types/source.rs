@@ -2,7 +2,8 @@ use crate::{
     parse_subset,
     tokenizer::{Token, Tokenizer},
     types::{
-        ChangeDate, Date, EventDetail, MultimediaRecord, Note, RepoCitation, UserDefinedData, Xref,
+        ChangeDate, Date, EventDetail, MultimediaRecord, Note, RepoCitation, UserDefinedDataset,
+        Xref,
     },
     Parser,
 };
@@ -25,7 +26,9 @@ pub struct Source {
     pub multimedia: Vec<MultimediaRecord>,
     pub notes: Vec<Note>,
     pub repo_citations: Vec<RepoCitation>,
-    pub custom_data: Vec<UserDefinedData>,
+    /// handles "RFN" tag; found in Ancestry.com export 
+    pub submitter_registered_rfn: Option<String>,
+    pub custom_data: Vec<Box<UserDefinedDataset>>,
 }
 
 impl Source {
@@ -81,6 +84,7 @@ impl Parser for Source {
                 "OBJE" => self.add_multimedia(MultimediaRecord::new(tokenizer, level + 1, pointer)),
                 "NOTE" => self.add_note(Note::new(tokenizer, level + 1)),
                 "REPO" => self.add_repo_citation(RepoCitation::new(tokenizer, level + 1)),
+                "RFN" => self.submitter_registered_rfn = Some(tokenizer.take_line_value()),
                 _ => panic!("{} Unhandled Source Tag: {}", tokenizer.debug(), tag),
             }
         };
@@ -135,7 +139,10 @@ pub struct SourceCitation {
     pub data: Option<SourceCitationData>,
     pub note: Option<Note>,
     pub certainty_assessment: Option<CertaintyAssessment>,
-    pub custom_data: Vec<UserDefinedData>,
+    /// handles "RFN" tag; found in Ancestry.com export 
+    pub submitter_registered_rfn: Option<String>,
+    pub multimedia: Vec<MultimediaRecord>,
+    pub custom_data: Vec<Box<UserDefinedDataset>>,
 }
 
 impl SourceCitation {
@@ -147,10 +154,16 @@ impl SourceCitation {
             data: None,
             note: None,
             certainty_assessment: None,
+            multimedia: Vec::new(),
             custom_data: Vec::new(),
+            submitter_registered_rfn: None,
         };
         citation.parse(tokenizer, level);
         citation
+    }
+
+    pub fn add_multimedia(&mut self, m: MultimediaRecord) {
+        self.multimedia.push(m);
     }
 }
 
@@ -158,18 +171,27 @@ impl Parser for SourceCitation {
     fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
         tokenizer.next_token();
 
-        let handle_subset = |tag: &str, tokenizer: &mut Tokenizer| match tag {
-            "PAGE" => self.page = Some(tokenizer.take_continued_text(level + 1)),
-            "DATA" => self.data = Some(SourceCitationData::new(tokenizer, level + 1)),
-            "NOTE" => self.note = Some(Note::new(tokenizer, level + 1)),
-            "QUAY" => {
-                self.certainty_assessment = Some(CertaintyAssessment::new(tokenizer, level + 1))
+        let handle_subset = |tag: &str, tokenizer: &mut Tokenizer| {
+            let mut pointer: Option<String> = None;
+            if let Token::Pointer(xref) = &tokenizer.current_token {
+                pointer = Some(xref.to_string());
+                tokenizer.next_token();
             }
-            _ => panic!(
-                "{} Unhandled SourceCitation Tag: {}",
-                tokenizer.debug(),
-                tag
-            ),
+            match tag {
+                "PAGE" => self.page = Some(tokenizer.take_continued_text(level + 1)),
+                "DATA" => self.data = Some(SourceCitationData::new(tokenizer, level + 1)),
+                "NOTE" => self.note = Some(Note::new(tokenizer, level + 1)),
+                "QUAY" => {
+                    self.certainty_assessment = Some(CertaintyAssessment::new(tokenizer, level + 1))
+                }
+                "RFN" => self.submitter_registered_rfn = Some(tokenizer.take_line_value()),
+                "OBJE" => self.add_multimedia(MultimediaRecord::new(tokenizer, level + 1, pointer)),
+                _ => panic!(
+                    "{} Unhandled SourceCitation Tag: {}",
+                    tokenizer.debug(),
+                    tag
+                ),
+            }
         };
         self.custom_data = parse_subset(tokenizer, level, handle_subset);
     }

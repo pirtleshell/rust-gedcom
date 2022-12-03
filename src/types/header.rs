@@ -7,7 +7,7 @@ use crate::{
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
 
-use super::UserDefinedData;
+use super::UserDefinedDataset;
 
 /// Header (tag: HEAD) containing GEDCOM metadata.
 /// See https://gedcom.io/specifications/FamilySearchGEDCOMv7.html#HEADER
@@ -78,7 +78,7 @@ pub struct Header {
     pub note: Option<Note>,
     /// tag: PLAC
     pub place: Option<HeadPlac>,
-    pub custom_data: Vec<UserDefinedData>,
+    pub custom_data: Vec<Box<UserDefinedDataset>>,
 }
 
 impl Header {

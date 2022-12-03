@@ -160,19 +160,22 @@ impl<'a> Tokenizer<'a> {
 
     /// Grabs and returns to the end of the current line as a String
     pub fn take_line_value(&mut self) -> String {
-        let value: String;
+        let mut value = String::from("");
         self.next_token();
 
-        if let Token::LineValue(val) = &self.current_token {
-            value = val.to_string();
-        } else {
-            panic!(
+        match &self.current_token {
+            Token::LineValue(val) => {
+                value = val.to_string();
+                self.next_token();
+            }
+            // gracefully handle an attempt to take a value from a valueless line
+            Token::Level(_) => (),
+            _ => panic!(
                 "{} Expected LineValue, found {:?}",
                 self.debug(),
                 self.current_token
-            );
+            ),
         }
-        self.next_token();
         value
     }
 

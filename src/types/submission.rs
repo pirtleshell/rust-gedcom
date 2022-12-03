@@ -1,7 +1,7 @@
 use crate::{
     parse_subset,
     tokenizer::Tokenizer,
-    types::{ChangeDate, Note, UserDefinedData, Xref},
+    types::{ChangeDate, Note, UserDefinedDataset, Xref},
     Parser,
 };
 
@@ -49,7 +49,7 @@ pub struct Submission {
     pub automated_record_id: Option<String>,
     pub note: Option<Note>,
     pub change_date: Option<ChangeDate>,
-    pub custom_data: Vec<UserDefinedData>,
+    pub custom_data: Vec<Box<UserDefinedDataset>>,
 }
 
 impl Submission {

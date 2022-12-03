@@ -40,6 +40,7 @@ use serde::{Deserialize, Serialize};
 ///     2 CONT Some Specials: This line is very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very long but not too long (255 caharcters is the limit).\n\
 ///     2 CONT This @@ (commercial at) character may only appear ONCE!\n\
 ///     2 CONT Note continued here. The word TE\n\
+///     2 CONT
 ///     2 CONC ST should not be broken!\n\
 ///     0 TRLR";
 
@@ -47,7 +48,7 @@ use serde::{Deserialize, Serialize};
 /// let data = doc.parse_document();
 
 /// let note = data.header.unwrap().note.unwrap();
-/// assert_eq!(note.value.unwrap().chars().count(), 1440);
+/// assert_eq!(note.value.unwrap().chars().count(), 1441);
 /// ```
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]

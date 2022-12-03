@@ -1,6 +1,6 @@
 use crate::{
     tokenizer::{Token, Tokenizer},
-    types::{Address, ChangeDate, MultimediaLink, Note, UserDefinedData, Xref},
+    types::{Address, ChangeDate, MultimediaLink, Note, UserDefinedDataset, Xref},
     Parser, parse_subset,
 };
 
@@ -37,7 +37,7 @@ pub struct Submitter {
     pub note: Option<Note>,
     /// Phone number of the submitter
     pub phone: Option<String>,
-    pub custom_data: Vec<UserDefinedData>,
+    pub custom_data: Vec<Box<UserDefinedDataset>>,
 }
 
 impl Submitter {

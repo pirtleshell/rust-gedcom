@@ -1,7 +1,7 @@
 use crate::{
     parse_subset,
     tokenizer::{Token, Tokenizer},
-    types::{Date, FamilyLink, Note, SourceCitation},
+    types::{Date, FamilyLink, MultimediaRecord, Note, SourceCitation},
     Parser,
 };
 
@@ -114,6 +114,7 @@ pub struct EventDetail {
     /// FACT tags are used. T. See GEDCOM 5.5 spec, page 35 and 49.
     pub event_type: Option<String>,
     pub citations: Vec<SourceCitation>,
+    pub multimedia: Vec<MultimediaRecord>,
 }
 
 impl EventDetail {
@@ -129,6 +130,7 @@ impl EventDetail {
             family_event_details: Vec::new(),
             event_type: None,
             citations: Vec::new(),
+            multimedia: Vec::new(),
         };
         event.parse(tokenizer, level);
         event
@@ -187,6 +189,10 @@ impl EventDetail {
         self.family_event_details.push(detail);
     }
 
+    pub fn add_multimedia_record(&mut self, m: MultimediaRecord) {
+        self.multimedia.push(m);
+    }
+
     #[must_use]
     pub fn get_citations(&self) -> Vec<SourceCitation> {
         self.citations.clone()
@@ -241,17 +247,27 @@ impl Parser for EventDetail {
             tokenizer.next_token();
         }
 
-        let handle_subset = |tag: &str, tokenizer: &mut Tokenizer| match tag {
-            "DATE" => self.date = Some(Date::new(tokenizer, level + 1)),
-            "PLAC" => self.place = Some(tokenizer.take_line_value()),
-            "SOUR" => self.add_citation(SourceCitation::new(tokenizer, level + 1)),
-            "FAMC" => self.family_link = Some(FamilyLink::new(tokenizer, level + 1, tag)),
-            "HUSB" | "WIFE" => {
-                self.add_family_event_detail(FamilyEventDetail::new(tokenizer, level + 1, tag));
+        let handle_subset = |tag: &str, tokenizer: &mut Tokenizer| {
+            let mut pointer: Option<String> = None;
+            if let Token::Pointer(xref) = &tokenizer.current_token {
+                pointer = Some(xref.to_string());
+                tokenizer.next_token();
             }
-            "NOTE" => self.note = Some(Note::new(tokenizer, level + 1)),
-            "TYPE" => self.event_type = Some(tokenizer.take_line_value()),
-            _ => panic!("{} Unhandled Event Tag: {}", tokenizer.debug(), tag),
+            match tag {
+                "DATE" => self.date = Some(Date::new(tokenizer, level + 1)),
+                "PLAC" => self.place = Some(tokenizer.take_line_value()),
+                "SOUR" => self.add_citation(SourceCitation::new(tokenizer, level + 1)),
+                "FAMC" => self.family_link = Some(FamilyLink::new(tokenizer, level + 1, tag)),
+                "HUSB" | "WIFE" => {
+                    self.add_family_event_detail(FamilyEventDetail::new(tokenizer, level + 1, tag));
+                }
+                "NOTE" => self.note = Some(Note::new(tokenizer, level + 1)),
+                "TYPE" => self.event_type = Some(tokenizer.take_line_value()),
+                "OBJE" => {
+                    self.add_multimedia_record(MultimediaRecord::new(tokenizer, level + 1, pointer))
+                }
+                _ => panic!("{} Unhandled Event Tag: {}", tokenizer.debug(), tag),
+            }
         };
         parse_subset(tokenizer, level, handle_subset);
 

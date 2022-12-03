@@ -3,7 +3,7 @@ use crate::{
     tokenizer::{Token, Tokenizer},
     types::{
         event::HasEvents, ChangeDate, Date, EventDetail, MultimediaRecord, Note, SourceCitation,
-        UserDefinedData, Xref,
+        UserDefinedDataset, Xref,
     },
     Parser,
 };
@@ -19,7 +19,6 @@ pub struct Individual {
     pub name: Option<Name>,
     pub sex: Option<Gender>,
     pub families: Vec<FamilyLink>,
-    pub custom_data: Vec<UserDefinedData>,
     pub attributes: Vec<AttributeDetail>,
     pub source: Vec<SourceCitation>,
     pub events: Vec<EventDetail>,
@@ -27,6 +26,7 @@ pub struct Individual {
     pub last_updated: Option<String>,
     pub note: Option<Note>,
     pub change_date: Option<ChangeDate>,
+    pub custom_data: Vec<Box<UserDefinedDataset>>,
 }
 
 impl Individual {
@@ -161,8 +161,6 @@ impl ToString for GenderType {
 /// assert_eq!(sex.fact.as_ref().unwrap(), "A fact about an individual's gender");
 /// assert_eq!(sex.sources[0].xref, "@CITATION1@");
 /// assert_eq!(sex.sources[0].page.as_ref().unwrap(), "Page: 132");
-/// assert_eq!(sex.sources[0].custom_data[0].tag, "_MYOWNTAG");
-/// assert_eq!(sex.sources[0].custom_data[0].value, "This is a non-standard tag. Not recommended but allowed");
 /// ```
 #[derive(Debug)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
@@ -170,7 +168,7 @@ pub struct Gender {
     pub value: GenderType,
     pub fact: Option<String>,
     pub sources: Vec<SourceCitation>,
-    pub custom_data: Vec<UserDefinedData>,
+    pub custom_data: Vec<Box<UserDefinedDataset>>,
 }
 
 impl Gender {
@@ -340,7 +338,7 @@ pub struct FamilyLink {
     pub child_linkage_status: Option<ChildLinkStatus>,
     pub adopted_by: Option<AdoptedByWhichParent>,
     pub note: Option<Note>,
-    pub custom_data: Vec<UserDefinedData>,
+    pub custom_data: Vec<Box<UserDefinedDataset>>,
 }
 
 impl FamilyLink {
