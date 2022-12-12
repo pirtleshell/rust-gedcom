@@ -11,7 +11,33 @@ use crate::{
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
 
-/// A Person within the family tree
+/// Individual (tag: INDI) represents a compilation of facts or hypothesized facts about an
+/// individual. These facts may come from multiple sources. Source citations and notes allow
+/// documentation of the source where each of the facts were discovered. See
+/// https://gedcom.io/specifications/FamilySearchGEDCOMv7.html#INDIVIDUAL_RECORD.
+///
+/// # Example
+///
+/// ```
+/// use gedcom::GedcomDocument;
+/// let sample = "\
+///    0 HEAD\n\
+///    1 GEDC\n\
+///    2 VERS 5.5\n\
+///    0 @PERSON1@ INDI\n\
+///    1 NAME John Doe\n\
+///    1 SEX M\n\
+///    0 TRLR";
+///
+/// let mut doc = GedcomDocument::new(sample.chars());
+/// let data = doc.parse_document();
+///
+/// let indi = &data.individuals[0];
+/// assert_eq!(indi.xref.as_ref().unwrap(), "@PERSON1@");
+/// assert_eq!(indi.name.as_ref().unwrap().value.as_ref().unwrap(), "John Doe");
+/// assert_eq!(indi.sex.as_ref().unwrap().value.to_string(), "Male");
+/// ```
+///
 #[derive(Debug, Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct Individual {
@@ -302,7 +328,7 @@ impl ToString for AdoptedByWhichParent {
 ///
 /// # Example
 ///
-/// ```rust
+/// ```
 /// use gedcom::GedcomDocument;
 /// let sample = "\
 ///    0 HEAD\n\
@@ -411,6 +437,38 @@ impl Parser for FamilyLink {
     }
 }
 
+/// Name (tag: NAME) refers to the names of individuals, which are represented in the manner the
+/// name is normally spoken, with the family name, surname, or nearest cultural parallel thereunto
+/// separated by slashes (U+002F /). Based on the dynamic nature or unknown compositions of naming
+/// conventions, it is difficult to provide a more detailed name piece structure to handle every
+/// case. The PERSONAL_NAME_PIECES are provided optionally for systems that cannot operate
+/// effectively with less structured information. The Personal Name payload shall be seen as the
+/// primary name representation, with name pieces as optional auxiliary information; in particular
+/// it is recommended that all name parts in PERSONAL_NAME_PIECES appear within the PersonalName
+/// payload in some form, possibly adjusted for gender-specific suffixes or the like. It is
+/// permitted for the payload to contain information not present in any name piece substructure.
+/// See https://gedcom.io/specifications/FamilySearchGEDCOMv7.html#PERSONAL_NAME_STRUCTURE
+///
+/// # Example
+///
+/// ```
+/// use gedcom::GedcomDocument;
+/// let sample = "\
+///    0 HEAD\n\
+///    1 GEDC\n\
+///    2 VERS 5.5\n\
+///    0 @PERSON1@ INDI\n\
+///    1 NAME John Doe\n\
+///    0 TRLR";
+///
+/// let mut doc = GedcomDocument::new(sample.chars());
+/// let data = doc.parse_document();
+///
+/// let indi = &data.individuals[0];
+/// assert_eq!(indi.xref.as_ref().unwrap(), "@PERSON1@");
+/// assert_eq!(indi.name.as_ref().unwrap().value.as_ref().unwrap(), "John Doe");
+/// ```
+///
 #[derive(Debug)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 pub struct Name {
