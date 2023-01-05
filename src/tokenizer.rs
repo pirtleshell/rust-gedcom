@@ -1,11 +1,11 @@
 //! Handles the tokenization of a GEDCOM file
 use std::str::Chars;
 
-/// The base enum of Token types
-///
-/// making use of [GEDCOM Standard Release 5.5.1](https://edge.fscdn.org/assets/img/documents/ged551-5bac5e57fe88dd37df0e153d9c515335.pdf), p.11
-/// `gedcom_line: level + delim + [optional_xref_ID] + tag + [optional_line_value] + terminator`
-#[derive(Debug, PartialEq)]
+/// The base enum of Token types making use of
+/// [GEDCOM Standard Release 5.5.1](https://edge.fscdn.org/assets/img/documents/ged551-5bac5e57fe88dd37df0e153d9c515335.pdf),
+/// p.11 `gedcom_line: level + delim + [optional_xref_ID] + tag + [optional_line_value] +
+/// terminator`
+#[derive(Clone, Debug, PartialEq)]
 pub enum Token {
     /// The `level`, denoting the depth within the tree
     Level(u8),
@@ -76,7 +76,6 @@ impl<'a> Tokenizer<'a> {
 
         // handle tag with trailing whitespace
         if self.current_char == '\n' {
-            // println!("line {}: trailing whitespace {:?}", self.line, self.current_token);
             self.next_token();
             return;
         }
@@ -98,6 +97,13 @@ impl<'a> Tokenizer<'a> {
                 self.line, self.current_token
             ),
         };
+    }
+
+    /// Like `next_token`, but returns a clone of the token you are popping.
+    pub fn take_token(&mut self) -> Token {
+        let current_token = self.current_token.clone();
+        self.next_token();
+        return current_token;
     }
 
     fn next_char(&mut self) {
@@ -145,5 +151,65 @@ impl<'a> Tokenizer<'a> {
         let is_zero_width_space = self.current_char as u32 == 65279_u32;
         let not_a_newline = self.current_char != '\n';
         (self.current_char.is_whitespace() || is_zero_width_space) && not_a_newline
+    }
+
+    /// Debug function displaying GEDCOM line number of error message.
+    pub fn debug(&self) -> String {
+        format!("line {}:", self.line)
+    }
+
+    /// Grabs and returns to the end of the current line as a String
+    pub fn take_line_value(&mut self) -> String {
+        let mut value = String::from("");
+        self.next_token();
+
+        match &self.current_token {
+            Token::LineValue(val) => {
+                value = val.to_string();
+                self.next_token();
+            }
+            // gracefully handle an attempt to take a value from a valueless line
+            Token::Level(_) => (),
+            _ => panic!(
+                "{} Expected LineValue, found {:?}",
+                self.debug(),
+                self.current_token
+            ),
+        }
+        value
+    }
+
+    /// Takes the value of the current line including handling
+    /// multi-line values from CONT & CONC tags.
+    pub fn take_continued_text(&mut self, level: u8) -> String {
+        let mut value = self.take_line_value();
+
+        loop {
+            if let Token::Level(cur_level) = self.current_token {
+                if cur_level <= level {
+                    break;
+                }
+            }
+            match &self.current_token {
+                Token::Tag(tag) => match tag.as_str() {
+                    "CONT" => {
+                        value.push('\n');
+                        value.push_str(&self.take_line_value())
+                    }
+                    "CONC" => {
+                        // value.push(' ');
+                        value.push_str(&self.take_line_value())
+                    }
+                    _ => panic!("{} Unhandled Continuation Tag: {}", self.debug(), tag),
+                },
+                Token::Level(_) => self.next_token(),
+                _ => panic!(
+                    "{} Unhandled Continuation Token: {:?}",
+                    self.debug(),
+                    self.current_token
+                ),
+            }
+        }
+        value
     }
 }

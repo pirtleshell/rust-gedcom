@@ -8,7 +8,13 @@
 use serde::{Deserialize, Serialize};
 
 pub mod event;
-pub use event::{Event, EventType};
+pub use event::{EventDetail, Event};
+
+pub mod date;
+pub use date::{ChangeDate, Date};
+
+mod place;
+pub use place::*;
 
 mod address;
 pub use address::*;
@@ -25,53 +31,29 @@ pub use individual::*;
 mod family;
 pub use family::*;
 
+mod submission;
+pub use submission::*;
+
 mod submitter;
 pub use submitter::*;
 
 mod source;
 pub use source::*;
 
-// TODO
-/// Multimedia item
-#[derive(Debug)]
-#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-pub struct Media {}
+mod note;
+pub use note::*;
 
-/// Data repository, the `REPO` tag
-#[derive(Debug)]
-#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-pub struct Repository {
-    /// Optional reference to link to this repo
-    pub xref: Option<Xref>,
-    /// Name of the repository
-    pub name: Option<String>,
-    /// Physical address of the data repository
-    pub address: Option<Address>,
-}
+mod translation;
+pub use translation::*;
 
-/// Citation linking a genealogy fact to a data `Source`
-#[derive(Clone, Debug)]
-#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-pub struct SourceCitation {
-    /// Reference to the `Source`
-    pub xref: Xref,
-    /// Page number of source
-    pub page: Option<String>,
-}
+mod repository;
+pub use repository::*;
 
-/// Citation linking a `Source` to a data `Repository`
-#[derive(Debug)]
-#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-pub struct RepoCitation {
-    /// Reference to the `Repository`
-    pub xref: Xref,
-    /// Call number to find the source at this repository
-    pub call_number: Option<String>,
-}
+mod corporation;
+pub use corporation::*;
 
-#[derive(Debug)]
-#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-pub struct CustomData {
-    pub tag: String,
-    pub value: String,
-}
+mod multimedia;
+pub use multimedia::*;
+
+mod custom;
+pub use custom::*;

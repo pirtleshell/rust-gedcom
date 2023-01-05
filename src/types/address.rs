@@ -2,6 +2,13 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+use crate::{
+    parse_subset,
+    tokenizer::{Token, Tokenizer},
+    types::UserDefinedDataset,
+    Parser,
+};
+
 /// Physical address at which a fact occurs
 #[derive(Default)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
@@ -14,6 +21,52 @@ pub struct Address {
     pub state: Option<String>,
     pub post: Option<String>,
     pub country: Option<String>,
+    pub custom_data: Vec<Box<UserDefinedDataset>>,
+}
+
+impl Address {
+    #[must_use]
+    pub fn new(tokenizer: &mut Tokenizer, level: u8) -> Address {
+        let mut addr = Address::default();
+        addr.parse(tokenizer, level);
+        addr
+    }
+}
+
+impl Parser for Address {
+    /// parse handles ADDR tag
+    fn parse(&mut self, tokenizer: &mut Tokenizer, level: u8) {
+        // skip ADDR tag
+        tokenizer.next_token();
+
+        let mut value = String::new();
+
+        // handle value on ADDR line
+        if let Token::LineValue(addr) = &tokenizer.current_token {
+            value.push_str(&addr);
+            tokenizer.next_token();
+        }
+
+        let handle_subset = |tag: &str, tokenizer: &mut Tokenizer| match tag {
+            "CONT" | "CONC" => {
+                value.push('\n');
+                value.push_str(&tokenizer.take_line_value());
+            }
+            "ADR1" => self.adr1 = Some(tokenizer.take_line_value()),
+            "ADR2" => self.adr2 = Some(tokenizer.take_line_value()),
+            "ADR3" => self.adr3 = Some(tokenizer.take_line_value()),
+            "CITY" => self.city = Some(tokenizer.take_line_value()),
+            "STAE" => self.state = Some(tokenizer.take_line_value()),
+            "POST" => self.post = Some(tokenizer.take_line_value()),
+            "CTRY" => self.country = Some(tokenizer.take_line_value()),
+            _ => panic!("{} Unhandled Address Tag: {}", tokenizer.debug(), tag),
+        };
+        self.custom_data = parse_subset(tokenizer, level, handle_subset);
+
+        if &value != "" {
+            self.value = Some(value);
+        }
+    }
 }
 
 impl fmt::Debug for Address {
